@@ -1,0 +1,351 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+
+<div class="content-wrap">
+    <div class="main">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-8 p-r-0 title-margin-right">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <h1>Hello, <span>Welcome Here</span></h1>
+                        </div>
+                    </div>
+                </div>
+                <!-- /# column -->
+                <div class="col-lg-4 p-l-0 title-margin-left">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                                <li class="breadcrumb-item active">UI-Tab</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <!-- /# column -->
+            </div>
+            {% if form.errors %}
+            <div class="row">
+              <div class="col-lg-12">
+                      <div class="alert alert-danger">
+                        <ul>
+                          {% for error in form.errors %}
+                          <li>{{ error }}</li>
+                          {% endfor %}
+                      </ul>
+                      </div>
+                    </div>
+            </div>
+            {% endif %}
+              <div class="row" id="success-message-row" style="display: none;">
+                <div class="col-lg-12">
+                        <div class="alert alert-success" id="success-div">
+                          <span id="message-span"></span>
+                        </div>
+                      </div>
+              </div>
+            <!-- /# row -->
+            <section id="main-content">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <h4 class="card-title">{{ project.title|title }}</h4>
+                                <ul class="nav nav-pills m-t-30 m-b-30">
+                                    <li class=" nav-item"> <a href="#navpills-1" class="nav-link active" data-toggle="tab" aria-expanded="false">Detail</a> </li>
+                                    <li class="nav-item"> <a href="#navpills-2" class="nav-link" data-toggle="tab" aria-expanded="false">Attachments</a> </li>
+                                    <li class="nav-item"> <a href="#navpills-3" class="nav-link" data-toggle="tab" aria-expanded="true">Extra</a> </li>
+                                </ul>
+                                <div class="tab-content br-n pn">
+                                    <div id="navpills-1" class="tab-pane active">
+                                        <div class="row">
+                                            <div class="col-lg-8">
+                                                <div class="form-group">
+                                                    <label>Decription:</label>
+                                                    <p class="form-control-static">{{ project.description }}</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Note:</label>
+                                                    <p class="form-control-static">{{ project.note }}</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Created At:</label>
+                                                    <p class="form-control-static">{{ project.create_time }}</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Target End Date:</label>
+                                                    <p class="form-control-static">{{ project.target_end_time }}</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Phase</label>
+                                                    <p class="form-control-static">{{ project.phase.name }}</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Created By:</label>
+                                                    <p class="form-control-static">{{ project.author.username }}</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Assigned To:</label>
+                                                    <p class="form-control-static"> {{ AssignedTo }}</p>
+                                                    
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="navpills-2" class="tab-pane">
+                                        <div class="row">
+                                            <div class="table-responsive">
+                                                <div class="table-wrapper">
+                                                    <div class="table-title">
+                                                        <div class="row">
+                                                            <div class="col-sm-8"><h2>Project Attachments</h2></div>
+                                                            <div class="col-sm-4">
+                                                                <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>File Name</th>
+                                                                <th>Tag</th>
+                                                                <th>Uploaded By</th>
+                                                                <th>Uploaded At</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for field in existing_attachments %}
+                                                            <tr>
+                                                                <td>{{ field.file_name }}</td>
+                                                                <td>{{ field.tag }}</td>
+                                                                <td>{{ field.uploaded_by }}</td>
+                                                                <td>{{ field.uploaded_at }}</td>
+                                                                <td>
+                                                                    <i class="fa fa-trash-o delete-icon" style="cursor: pointer;color:red;padding-right: 20px;" data-delete-url="{% url 'add_remove_attachment' project.id %}" data-file-path="{{ field.file_name }}"></i>
+                                                                    <a href="{% url 'download_file' file_id=field.file_id %}"><i class="fa fa-download"></i></a>
+
+                                                                      <!-- Delete Confirmation Modal -->
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                    <div id="csrftoken" style="display: none;">{% csrf_token %}</div>
+                                                    <!-- Delete Confirmation Modal -->
+                                                    <div class="modal fade" id="hideModalButton" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                                        <div class="modal-dialog" role="document">
+                                                          <div class="modal-content">
+                                                            <div class="modal-header">
+                                                              <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+                                                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                              </button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                              Are you sure you want to delete the file?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                              <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelButton">Cancel</button>
+                                                              <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Loading Spinner -->
+                                                    <div id="loader" class="text-center" style="display: none;">
+                                                        <div class="spinner-border" role="status">
+                                                            <span class="sr-only">Loading...</span>
+                                                        </div>
+                                                    </div>
+  
+                                                </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+    const deleteIcons = document.querySelectorAll(".delete-icon");
+    var csrfInputElement = document.querySelector('#csrftoken input[name="csrfmiddlewaretoken"]');
+    const csrfToken = csrfInputElement.value;
+    const phaseAssignmentsList = document.getElementById("phase-assignments");
+
+     // Function to get the value of the 'message' query parameter from the URL
+     function getQueryParameter(parameterName) {
+         const queryString = window.location.search;
+         const urlParams = new URLSearchParams(queryString);
+        return urlParams.get(parameterName);
+    }
+
+     // Get the 'message' query parameter
+    const message = getQueryParameter('message');
+
+     if (message) {
+         // Display the message in the 'success-div'
+         const successDiv = document.getElementById('message-span');
+         successDiv.innerHTML = message;
+         const loader = document.getElementById('success-message-row');
+        loader.style.display = 'block';
+    }
+
+    phaseAssignmentsList.addEventListener("click", function(event) {
+            if (event.target.tagName === "LI") {
+                const assignmentToRemove = event.target.textContent;
+                const assignments = Array.from(phaseAssignmentsList.children).map(li => li.textContent);
+
+                const index = assignments.indexOf(assignmentToRemove);
+                if (index !== -1) {
+                    assignments.splice(index, 1);
+                    event.target.remove();
+                }
+            }
+        });
+
+
+    deleteIcons.forEach(icon => {
+      icon.addEventListener("click", function () {
+        const deleteUrl = icon.getAttribute("data-delete-url");
+        const filePath = icon.getAttribute("data-file-path");
+
+        // Set up the click event for the "Delete" button in the modal
+        document.getElementById("confirmDelete").addEventListener("click", function () {
+          // Show the loading spinner when delete is confirmed
+          $('#deleteModal').modal('hide'); // Close the modal
+          // Show the loader with the spinner
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+
+          // Create a FormData object to send the data
+          var formData = new FormData();
+          formData.append("action", "delete");
+          formData.append("file_path", filePath);
+          fetch(deleteUrl, {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-CSRFToken": csrfToken,
+            }
+          }).then(response => {
+            if (response.ok) {
+                    if (response.url) {
+                        // Redirect to the new location
+                        window.location.href = response.url;
+                        return;
+                    }
+                    return response.text();
+                }
+                throw new Error('Network response was not ok.');
+            }).then(data => {
+                // Handle the success response here
+                console.log(data);
+
+                // Hide the loader when the request is completed
+                loader.style.display = 'none';
+            }).catch(error => {
+                // Handle the error here
+                console.error(error);
+
+                // Hide the loader on error
+                loader.style.display = 'none';
+            })
+          .finally(() => {
+            // Close the modal
+            document.getElementById("hideModalButton").classList.remove("show");
+            document.getElementById("hideModalButton").style.display = "none";
+
+            // Hide the loading spinner when the action is completed
+            document.getElementById("loader").style.display = "none";
+          });
+        });
+
+        // Show the confirmation modal
+        document.getElementById("hideModalButton").classList.add("show");
+        document.getElementById("hideModalButton").style.display = "block";
+      });
+    });
+  });
+
+  document.getElementById("cancelButton").addEventListener("click", function() {
+    // Close the modal manually
+    document.getElementById('hideModalButton').style.display = "none";
+  });
+  
+  $(document).ready(function () {
+    $('[data-toggle="tooltip"]').tooltip();
+
+    // Append table with add row form on add new button click
+    $(".add-new").click(function () {
+        $(this).attr("disabled", "disabled");
+        var index = $("table tbody tr:last-child").index();
+        var actions = '<button type="button" class="btn btn-success" style="size: 10px;">' +
+            '<i class="fa fa-check"></i> Tick</button>';
+        var row = '<tr>' +
+            '<td><input type="file" class="form-control" name="file" id="file"></td>' +
+            '<td><select id="tag" name="tag">{% for tag in tags %}' +
+            '<option value="{{ tag.id }}">{{ tag.name }}</option>{% endfor %}</select></td>' +
+            '<td><input type="text" id="username" name="username" value="{{ user.username }}" disabled></td>' +
+            '<td><input type="text" id="createdAt" name="createdAt" value="" disabled></td>' +
+            '<td>' + actions + '</td></tr>';
+
+        $("table").append(row);
+        $("table tbody tr").eq(index + 1).find(".add, .edit").toggle();
+        $('[data-toggle="tooltip"]').tooltip();
+
+        // Add click event handler to the newly added button
+        $(".btn-success").click(function () {
+            // Get data from the input fields
+            var fileData = $("#file").prop("files")[0];
+            var tagData = $("#tag").val();
+            var usernameData = $("#username").val();
+            var csrfInputElement = document.querySelector('#csrftoken input[name="csrfmiddlewaretoken"]');
+            const csrfToken = csrfInputElement.value;
+
+
+            // Create a FormData object to send the data
+            var formData = new FormData();
+            formData.append("file", fileData);
+            formData.append("tag", tagData);
+            formData.append("username", usernameData);
+
+            // Make an API POST request using fetch
+            fetch("{% url 'add_remove_attachment' project.id %}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                }
+            }).then(response => {
+            if (response.ok) {
+                    if (response.url) {
+                        // Redirect to the new location
+                        window.location.href = response.url;
+                        return;
+                    }
+                    return response.text();
+                }
+                throw new Error('Network response was not ok.');
+            }).then(data => {
+                // Handle the success response here
+                console.log(data);
+
+                // Hide the loader when the request is completed
+                loader.style.display = 'none';
+            })
+        });
+    });
+});
+  
+  
+  </script>
+{% endblock %}

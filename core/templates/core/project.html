@@ -1,0 +1,216 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="content-wrap">
+    <div class="main">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-8 p-r-0 title-margin-right">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <h1>Hello, <span>Welcome Here</span></h1>
+                        </div>
+                    </div>
+                </div>
+                <!-- /# column -->
+                <div class="col-lg-4 p-l-0 title-margin-left">
+                    <div class="page-header">
+                        <div class="page-title">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                                <li class="breadcrumb-item active">Table-Export</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <!-- /# column -->
+            </div>
+            {% if form.errors %}
+            <div class="row">
+              <div class="col-lg-12">
+                      <div class="alert alert-danger">
+                        <ul>
+                          {% for error in form.errors %}
+                          <li>{{ error }}</li>
+                          {% endfor %}
+                      </ul>
+                      </div>
+                    </div>
+            </div>
+            {% endif %}
+            {% for message in messages %}
+              <div class="row">
+                <div class="col-lg-12">
+                  {% if "success" in message.tags %}
+                  <div class="alert alert-success">
+                          <span> {{ message }} </span>
+                  </div>
+                  {% endif %}
+
+                  {% if "error" in message.tags %}
+                  <div class="alert alert-danger">
+                          <span> {{ message }} </span>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+
+            <!-- /# row -->
+            <div class="main-content">
+                <div class="row">
+                  <div class="col-lg-12">
+                    <div class="card">
+                      <div class="card-body">
+                        <div class="compose-email">
+                          <div class="mail-box">
+                            <aside class="sm-side">
+                              <div class="inbox-body text-center">
+                                <a href="#myModal" data-toggle="modal" title="Compose" class="btn btn-compose"> Create New</a>
+                                <!-- Modal -->
+                                <div aria-hidden="true" role="dialog" tabindex="-1" id="myModal" class="modal fade">
+                                  <div class="modal-dialog">
+                                    <div class="modal-content text-left">
+                                      <div class="modal-header">
+                                        <button aria-hidden="true" data-dismiss="modal" class="close" type="button"><i class="ti-close"></i></button>
+                                        <h4 class="modal-title">New Project</h4>
+                                      </div>
+                                      <!-- Display form errors as alerts -->
+                                      {% if form.errors %}
+                                      <div class="alert alert-danger">
+                                          <strong>Error(s):</strong>
+                                          <ul>
+                                              {% for error in form.errors %}
+                                              <li>{{ error }}</li>
+                                              {% endfor %}
+                                          </ul>
+                                      </div>
+                                      {% endif %}
+                                      <div class="modal-body">
+                                        <form method="post">
+                                          {% csrf_token %}
+                                          <!-- Loop through the form fields -->
+                                          {% for field in form %}
+                                              <div class="form-group">
+                                                  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                  {% if field.name == 'target_end_time' %}
+                                                      <input type="date" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value }}">
+                                                  {% else %}
+                                                      {{ field }}
+                                                  {% endif %}
+                                              </div>
+                                          {% endfor %}
+                                          <button type="submit" class="btn btn-primary">Submit</button>
+                                      </form>
+                                      </div>
+                                    </div>
+                                    <!-- /.modal-content -->
+                                  </div>
+                                  <!-- /.modal-dialog -->
+                                </div>
+                                <!-- /.modal -->
+                              </div>
+                              <ul class="inbox-nav inbox-divider">
+                                <li class="breadcrumb-item active">
+                                  <a href="#"><i class=""></i> Backlog <span class="badge badge-primary pull-right m-t-12">{{count.Backlog}}</span></a>
+                                </li>
+                                <li>
+                                  <a href="#"><i class=""></i> Production <span class="badge badge-primary pull-right m-t-12">{{count.Production}}</span></a>
+                                </li>
+                                <li>
+                                  <a href="#"><i class=""></i> QC <span class="badge badge-primary pull-right m-t-12">{{count.QC}}</span></a>
+                                </li>
+                                <li>
+                                  <a href="#"><i class=""></i> Delivery<span class="badge badge-primary pull-right m-t-12">{{count.Delivery}}</span></a>
+                                </li>
+                                <li>
+                                  <a href="#"><i class=""></i> Completed <span class="badge badge-success pull-right m-t-12">{{count.Completed}}</span></a>
+                                </li>
+                              </ul>
+    
+                            </aside>
+                            <aside class="lg-side">
+                              <div class="inbox-head">
+                                <h3 class="input-text">Projects</h3>
+                                <form action="#" class="pull-right position">
+                                  <div class="input-append inner-append">
+                                    <input type="text" class="sr-input" placeholder="Search Project">
+                                    <button class="btn sr-btn append-btn" type="button"><i class="fa fa-search"></i></button>
+                                  </div>
+                                </form>
+                              </div>
+                              <div class="mail-option">
+    
+                                <ul class="unstyled inbox-pagination pagination-list">
+                                  <!-- <li><span>1-50 of 234</span></li> -->
+                                  <li>
+                                    <a class="np-btn" href="#"><i class="fa fa-angle-left  pagination-left"></i></a>
+                                  </li>
+                                  <li>
+                                    <a class="np-btn" href="#"><i class="fa fa-angle-right pagination-right"></i></a>
+                                  </li>
+                                </ul>
+                              </div>
+                              <div class="table-responsive">
+                                <table id="bootstrap-data-table-export" class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Description</th>
+                                            <th>Note</th>
+                                            <th>Created At</th>
+                                            <th>Target End Date</th>
+                                            <th>Completion Date</th>
+                                            <th>Phase</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                      {% for project in projects %}
+                                        <tr>
+                                            <td>
+                                              <a href="{% url  'project-detail' project.identity %}">{{ project.title }}</a>
+                                            </td>
+                                            <td>{{ project.descripion }}</td>
+                                            <td>{{ project.note }}</td>
+                                            <td>{{ project.create_time }}</td>
+                                            <td>{{ project.target_end_time }}</td>
+                                            <td>{{ project.completion_date }}</td>
+                                            <td>{{ project.phase.name }}</td>
+                                            <td><a href="{% url 'delete_project' pk=project.identity %}" style="color:red;"><i class="fa fa-trash"></i></a></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+    
+                            </aside>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-12">
+                    <div class="footer">
+                      <p>2018 © Admin Board. - <a href="#">coordinates.pythonanywhere.com</a></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+    <!-- Include the date picker initialization script -->
+    <script>
+      $(document).ready(function () {
+          // Initialize the date picker for the 'target_end_time' field
+          $('#id_target_end_time').datepicker({
+              format: 'yyyy-mm-dd',  // Set the desired date format
+              autoclose: true       // Close the date picker when a date is selected
+          });
+      });
+  </script>
+{% endblock %}
