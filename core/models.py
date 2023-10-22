@@ -58,7 +58,8 @@ class PhaseAssignment(models.Model):
     assigned_to = MultiSelectField(
         choices=[(user.id, user.username) for user in User.objects.all()],
         max_choices=3,
-        max_length=3
+        max_length=3,
+        null=True
         )
     STATUS_CHOICES = (
         ('Open', 'Open'),

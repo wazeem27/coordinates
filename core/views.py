@@ -99,7 +99,7 @@ def delete_model_object(request, pk):
         if files:
             messages.error(request,
                 f'Project "{obj.title}" cannot be deleted. '
-                'It has Attachments, (delete the attchment first if you really want to delete it.'
+                'It has Attachments, (delete the attachments first if you really want to delete it.)'
             )
             return redirect('core-projects')
         elif not obj.phase.name == 'Backlog':

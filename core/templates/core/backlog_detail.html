@@ -199,18 +199,6 @@
         loader.style.display = 'block';
     }
 
-    phaseAssignmentsList.addEventListener("click", function(event) {
-            if (event.target.tagName === "LI") {
-                const assignmentToRemove = event.target.textContent;
-                const assignments = Array.from(phaseAssignmentsList.children).map(li => li.textContent);
-
-                const index = assignments.indexOf(assignmentToRemove);
-                if (index !== -1) {
-                    assignments.splice(index, 1);
-                    event.target.remove();
-                }
-            }
-        });
 
 
     deleteIcons.forEach(icon => {
