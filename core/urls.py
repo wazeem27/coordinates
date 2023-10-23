@@ -19,6 +19,6 @@ urlpatterns = [
     path('qc_list/', QCList.as_view(), name='core-qc'),
     path('delivery_list/', DeliveryList.as_view(), name='core-delivery'),
     path('completed_list/', CompletedList.as_view(), name='core-completed'),
-    #path('edit_phase_assignments/<int:pk>/', edit_phase_assignments, name='edit_phase_assignments'),
+    path('edit_phase_assignments/<int:project_id>/', edit_phase_assignments, name='edit_phase_assignments'),
     path('project/<int:pk>/delete/', delete_model_object, name='delete_project'),
 ]

@@ -21,9 +21,4 @@ class FileAttachmentForm(forms.Form):
 class PhaseAssignmentForm(forms.ModelForm):
     class Meta:
         model = PhaseAssignment
-        fields = ['assigned_users']
-
-    assigned_users = forms.ModelMultipleChoiceField(
-        queryset=User.objects.all(),
-        widget=forms.CheckboxSelectMultiple
-    )
+        fields = ['project', 'phase', 'assigned_by', 'status', 'assigned_to']

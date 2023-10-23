@@ -10,9 +10,11 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic.edit import CreateView, FormView, DeleteView, View
 from django.views.generic import TemplateView, DetailView
 from django.contrib import messages
-from .models import Project, FileAttachment, Tag, PhaseAssignment
+from .models import Project, FileAttachment, Tag, ProjectTimeline, PhaseAssignment
 from .forms import ProjectForm, FileAttachmentForm, PhaseAssignmentForm
+from .utils import format_time_difference
 from django.core.files.storage import default_storage
+from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 import shutil
 from django.http import JsonResponse
@@ -54,6 +56,12 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
             project = form.save(commit=False)
             project.author = self.request.user
             project.save()
+            # Add event in timeline
+            timeline = ProjectTimeline(
+                project=project, user=request.user,
+                change_note=f"Project '{title}' created.", status="add"
+            )
+            timeline.save()
             messages.success(request, f'Project "{title}" created successfully.')
             return redirect('core-projects')  # Redirect to a success view
         return render(request, self.template_name, {'form': form})
@@ -78,8 +86,12 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         all_tags = [{"name": tag.name, "id": tag.id} for tag in tags]
         context['tags'] = all_tags
         user_list = PhaseAssignment.objects.filter(id=obj.id)
-        assigned_to = ",".join([user.username for user in user_list])
-        context["AssignedTo"] = "Nil" if not assigned_to else assigned_to
+        assigned_to = [user for user in user_list]
+        #context["AssignedTo"] = [] if not assigned_to else assigned_to
+        #user_data = [for user in users_list]
+        context["users_list"] = User.objects.all()
+        context["phaseAssignmentForm"] = PhaseAssignmentForm()
+        
         
         attachments = FileAttachment.objects.filter(project=obj.id)
         existing_attachments = [
@@ -88,6 +100,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
              "uploaded_by": file_obj.uploaded_by.username,
              "uploaded_at": file_obj.create_time} for file_obj in attachments]
         context['existing_attachments'] = existing_attachments
+
+        project_timeline = [
+            {
+                "user": timeline.user.username,
+                "time": format_time_difference(timeline.date_time),
+                "changenote": timeline.change_note,
+                "status": timeline.status
+            }
+            for timeline in ProjectTimeline.objects.filter(project=obj.id)
+        ]
+        context['timeline'] = project_timeline
         return context
 
 
@@ -99,7 +122,7 @@ def delete_model_object(request, pk):
         if files:
             messages.error(request,
                 f'Project "{obj.title}" cannot be deleted. '
-                'It has Attachments, (delete the attachments first if you really want to delete it.)'
+                'It has Attachments, (delete the attchment first if you really want to delete it.'
             )
             return redirect('core-projects')
         elif not obj.phase.name == 'Backlog':
@@ -139,6 +162,12 @@ class AddRemoveAttachmentView(LoginRequiredMixin, View):
                 attachment.delete()
                 s3.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=file_path)
             message = f'Attchment deleted successfully from "{project.title}".'
+            timeline = ProjectTimeline(
+                project=project, user=request.user,
+                change_note=f"File Attachment '{file_path}' deleted.",
+                status="delete"
+            )
+            timeline.save()
             redirect_url = f"{reverse('project-detail', kwargs={'pk': project.id})}?message={message}"
             return redirect(redirect_url)
         else:
@@ -160,6 +189,13 @@ class AddRemoveAttachmentView(LoginRequiredMixin, View):
                 )
                 attachment_instance.save()  # Save the model instance to the database
                 message = f'Added {file.name} attchment to "{project.title}" successfully.'
+                # Add event in timeline
+                timeline = ProjectTimeline(
+                    project=project, user=request.user,
+                    change_note=f"File Attachment '{file.name}' Added.",
+                    status="add"
+                )
+                timeline.save()
                 redirect_url = f"{reverse('project-detail', kwargs={'pk': project.id})}?message={message}"
                 return redirect(redirect_url)
             else:
@@ -243,23 +279,29 @@ class CompletedList(LoginRequiredMixin, View):
 
 
 @login_required
-def edit_phase_assignments(request, project_pk):
-    project = Project.objects.get(pk=project_pk)  # Get the project based on the pk
+def edit_phase_assignments(request, project_id):
+    project = Project.objects.get(pk=project_id)  # Get the project based on the pk
     #phase = Phase.objects.get(...)  # Get the appropriate Phase
     assigned_by = request.user  # Use the current user as the assigned_by
-
+    project = Project.objects.get(id=project_id)
+    form_data = {
+        'project': project,
+        'assigned_by': request.user,
+        'assigned_to': User.objects.filter(
+            id__in=[int(id_str) for id_str in request.POST.get('assignedTo')]
+        )
+    }
     if request.method == 'POST':
-        form = PhaseAssignmentForm(request.POST)
+        form = PhaseAssignmentForm(form_data)
         if form.is_valid():
-            assigned_users = form.cleaned_data['assigned_users']
 
             # Create a PhaseAssignment instance with the manually handled fields
-            PhaseAssignment.objects.create(
-                project=project,
-                phase=phase,
-                assigned_by=assigned_by,
-                assigned_users=assigned_users
-            )
+            # PhaseAssignment.objects.create(
+            #     project=project,
+            #     phase=phase,
+            #     assigned_by=assigned_by,
+            #     assigned_users=assigned_users
+            # )
 
             return redirect('phase_assignments_list')  # Redirect to the list view
     else:

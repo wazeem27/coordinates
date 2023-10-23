@@ -38,7 +38,6 @@ class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
 
 
-
 class FileAttachment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     file_name = models.CharField(max_length=100)
@@ -48,6 +47,7 @@ class FileAttachment(models.Model):
         null=True, blank=True
     )
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
 
 
 class PhaseAssignment(models.Model):
@@ -58,8 +58,7 @@ class PhaseAssignment(models.Model):
     assigned_to = MultiSelectField(
         choices=[(user.id, user.username) for user in User.objects.all()],
         max_choices=3,
-        max_length=3,
-        null=True
+        max_length=3
         )
     STATUS_CHOICES = (
         ('Open', 'Open'),
@@ -72,3 +71,16 @@ class AssignmentDetail(models.Model):
     assignment = models.ForeignKey(PhaseAssignment, on_delete=models.CASCADE)
     note = models.TextField()
     end_date = models.DateTimeField()
+
+
+class ProjectTimeline(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date_time = models.DateTimeField(auto_now_add=True)
+    change_note = models.TextField()
+    CHANGE_STATE = (
+        ('add', 'add'),
+        ('delete', 'delete'),
+        ('update', 'update')
+    )
+    status = models.CharField(max_length=25, choices=CHANGE_STATE)
