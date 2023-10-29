@@ -93,7 +93,10 @@
                                                         <div class="input-group">
                                                           <select name="assignedTo" class="form-control" id="selectBox" multiple="multiple" disabled>
                                                             {% for user in users_list %}
-                                                            <option value="{{ user.id }}">{{user.username}}</option>
+                                                                <option value="{{ user.id }}"
+                                                                  {% if user.id in selected_users %} selected="selected" {% endif %}>
+                                                                    {{ user.username }}
+                                                                </option>
                                                             {% endfor %}
                                                           </select>
                                                           <span class="edit-icon" id="editIcon" title="Edit Project Phase Assigned Users">&#9998;</span>
@@ -235,12 +238,12 @@
 
                                     {% for item in timeline %}
                                     <li>
-                                        <div class="timeline-badge {% if 'Project' in item.changenote and 'created.' in item.changenote  %} primary {% elif item.status == 'add' %} success {% elif item.status == 'edit' %} warning {% elif item.status == 'delete' %} danger {% endif %}">
+                                        <div class="timeline-badge {% if 'Project' in item.changenote and 'created.' in item.changenote  %} primary {% elif item.status == 'add' %} success {% elif item.status == 'update' %} warning {% elif item.status == 'delete' %} danger {% endif %}">
                                             {% if "Project" in item.changenote and "created." in item.changenote  %}
                                             <i class="fa fa-smile-o"></i>
                                             {% elif item.status == 'add' %}
                                             <i class="fa fa-check-circle-o"></i>
-                                            {% elif item.status == 'edit' %}
+                                            {% elif item.status == 'update' %}
                                             <i class="fa fa-sun-o"></i>
                                             {% elif item.status == 'delete' %}
                                             <i class="fa fa-times-circle-o"></i>

@@ -67,6 +67,7 @@ class PhaseAssignment(models.Model):
     )
     status = models.CharField(max_length=25, choices=STATUS_CHOICES)
 
+
 class AssignmentDetail(models.Model):
     assignment = models.ForeignKey(PhaseAssignment, on_delete=models.CASCADE)
     note = models.TextField()

@@ -1,27 +1,32 @@
-import datetime
-
-from django.shortcuts import render, redirect, get_object_or_404, reverse
-from django.http import HttpResponseRedirect
-from django.http import JsonResponse
-from django.urls import reverse_lazy
-from django.http import HttpResponse
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required
-from django.views.generic.edit import CreateView, FormView, DeleteView, View
-from django.views.generic import TemplateView, DetailView
-from django.contrib import messages
-from .models import Project, FileAttachment, Tag, ProjectTimeline, PhaseAssignment
-from .forms import ProjectForm, FileAttachmentForm, PhaseAssignmentForm
-from .utils import format_time_difference
-from django.core.files.storage import default_storage
-from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
-import shutil
-from django.http import JsonResponse
 import os
 import json
 import boto3
+import shutil
+import datetime
+
 from coordinates import settings
+from django.contrib import messages
+from django.http import JsonResponse
+from django.http import JsonResponse
+from django.urls import reverse_lazy
+from django.http import HttpResponse
+from .utils import format_time_difference
+from django.contrib.auth.models import User
+from django.http import HttpResponseRedirect
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.views.generic import TemplateView, DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+from .forms import ProjectForm, FileAttachmentForm, PhaseAssignmentForm
+from django.shortcuts import render, redirect, get_object_or_404, reverse
+from django.views.generic.edit import CreateView, FormView, DeleteView, View
+from .models import Project, FileAttachment, Tag, ProjectTimeline, PhaseAssignment, Phase
+
+
+
+
+
 
 
 class ProjectCreateView(LoginRequiredMixin, CreateView):
@@ -85,8 +90,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         tags = Tag.objects.all()
         all_tags = [{"name": tag.name, "id": tag.id} for tag in tags]
         context['tags'] = all_tags
-        user_list = PhaseAssignment.objects.filter(id=obj.id)
-        assigned_to = [user for user in user_list]
+        user_list = PhaseAssignment.objects.get(id=obj.id)
+        # assigned_to = [phase.assigned_to for phase in phase_assignments]
         #context["AssignedTo"] = [] if not assigned_to else assigned_to
         #user_data = [for user in users_list]
         context["users_list"] = User.objects.all()
@@ -185,6 +190,7 @@ class AddRemoveAttachmentView(LoginRequiredMixin, View):
                     tag=tag,
                     file_name=file_path,
                     uploaded_by=request.user,
+                    phase = project.phase
                     # Populate other model fields as needed
                 )
                 attachment_instance.save()  # Save the model instance to the database
@@ -287,23 +293,41 @@ def edit_phase_assignments(request, project_id):
     form_data = {
         'project': project,
         'assigned_by': request.user,
-        'assigned_to': User.objects.filter(
+        'assigned_to': list(user_obj.id for user_obj in User.objects.filter(
             id__in=[int(id_str) for id_str in request.POST.get('assignedTo')]
-        )
+        ))
     }
+    if project.phase.name == "Backlog":
+        changed_phase = Phase.objects.get(name='Production')
+        form_data['phase'] = changed_phase
+        form_data['status'] = 'Open'
+    else:
+        changed_phase = Phase.objects.get(name='Production')
+        form_data['phase'] = changed_phase
+        form_data['status'] = 'Open'
     if request.method == 'POST':
         form = PhaseAssignmentForm(form_data)
         if form.is_valid():
-
             # Create a PhaseAssignment instance with the manually handled fields
-            # PhaseAssignment.objects.create(
-            #     project=project,
-            #     phase=phase,
-            #     assigned_by=assigned_by,
-            #     assigned_users=assigned_users
-            # )
+            PhaseAssignment.objects.create(
+                project=project,
+                phase=changed_phase,
+                assigned_by=assigned_by,
+                assigned_to=form_data['assigned_to']
+            )
 
-            return redirect('phase_assignments_list')  # Redirect to the list view
+            project.phase = changed_phase
+            project.save()
+            assignees = User.objects.filter(id__in=[int(id_str) for id_str in request.POST.get('assignedTo')])
+            users_str = ", ".join([user.username for user in assignees])
+            timeline = ProjectTimeline(
+                    project=project,
+                    user=request.user,
+                    change_note=f"Assigned Project to {users_str}",
+                    status="update"
+                )
+            timeline.save()
+            return redirect('core-projects')  # Redirect to the list view
     else:
         form = PhaseAssignmentForm()
 

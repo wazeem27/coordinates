@@ -53,12 +53,11 @@
                                                 <td>{{ item.author }}</td>
                                             </tr>
                                             {% endfor %}
-                                            {% if not production_list %}
-                                            <tr>
-                                                    <td colspan="6" style="text-align: center;">No projects in Production phase to display.</td>
-                                            </tr>
-                                            {% endif %}
-
+					    {% if not production_list %}
+					    <tr>
+						    <td colspan="6" style="text-align: center;">No items available</td>
+				            </tr>
+					    {% endif %}
                                         </tbody>
                                     </table>
                                 </div>
