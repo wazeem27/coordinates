@@ -55,8 +55,11 @@
                                 <h4 class="card-title">{{ project.title|title }}</h4>
                                 <ul class="nav nav-pills m-t-30 m-b-30">
                                     <li class=" nav-item"> <a href="#navpills-1" class="nav-link active" data-toggle="tab" aria-expanded="false">Project Detail</a> </li>
-                                    <li class="nav-item"> <a href="#navpills-2" class="nav-link" data-toggle="tab" aria-expanded="false">Attachments</a> </li>
-                                    <li class="nav-item"> <a href="#navpills-3" class="nav-link" data-toggle="tab" aria-expanded="true">Phases</a> </li>
+                                    <li class=" nav-item"> <a href="#navpills-2" class="nav-link" data-toggle="tab" aria-expanded="false">Production</a> </li>
+                                    <li class=" nav-item"> <a href="#navpills-3" class="nav-link" data-toggle="tab" aria-expanded="false">QC</a> </li>
+                                    <li class=" nav-item"> <a href="#navpills-4" class="nav-link" data-toggle="tab" aria-expanded="false">Delivery</a> </li>
+                                    <li class=" nav-item"> <a href="#navpills-5" class="nav-link" data-toggle="tab" aria-expanded="false">Completed</a> </li>
+                                    <li class="nav-item"> <a href="#navpills-6" class="nav-link" data-toggle="tab" aria-expanded="true">Phases</a> </li>
                                 </ul>
                                 <div class="tab-content br-n pn">
                                     <div id="navpills-1" class="tab-pane active">
@@ -86,35 +89,17 @@
                                                     <label class="text-muted m-b-15 font-12"><b>Created By:</b></label>
                                                     <span class="form-control-static">{{ project.author.username }}</span>
                                                 </div>
-                                                <div class="form-group">
-                                                    <form method="post" action=" {% url 'edit_phase_assignments' project.id %} ">
-                                                        {% csrf_token %}
-                                                        <label for="selectBox" class="badge badge-secondary">Assigned To:</label>
-                                                        <div class="input-group">
-                                                          <select name="assignedTo" class="form-control" id="selectBox" multiple="multiple" disabled>
-                                                            {% for user in users_list %}
-                                                                <option value="{{ user.id }}"
-                                                                  {% if user.id in selected_users %} selected="selected" {% endif %}>
-                                                                    {{ user.username }}
-                                                                </option>
-                                                            {% endfor %}
-                                                          </select>
-                                                          <span class="edit-icon" id="editIcon" title="Edit Project Phase Assigned Users">&#9998;</span>
-                                                          <button type="submit" class="save-button" id="saveButton" style="display: none;color: green;padding-top: 5px;">Save</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
+                                                
                                             </div>
                                         </div>
-                                    </div>
-                                    <div id="navpills-2" class="tab-pane">
+                                        <!-- Project Attachment section -->
                                         <div class="row">
                                             <div class="table-responsive">
                                                 <div class="table-wrapper">
                                                     <div class="table-title">
                                                         <div class="row">
-                                                            <div class="col-sm-8"><h2>Project Attachments</h2></div>
-                                                            <div class="col-sm-4">
+                                                            <div class="col-sm-10"><h2>Project Attachments</h2></div>
+                                                            <div class="col-sm-2">
                                                                 <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
                                                             </div>
                                                         </div>
@@ -178,10 +163,383 @@
                                         </div>
                                     </div>
                                     </div>
+                                    <div id="navpills-2" class="tab-pane">
+                                        <div class="row">
+                                            <div class="form-group">
+                                                    <form method="post" action=" {% url 'edit_phase_assignments' project.id %} ">
+                                                        {% csrf_token %}
+                                                        <div class="input-group">
+                                                            <label for="selectBox" class="text-muted m-b-15 font-12 label-inline">Assigned To:</label>
+                                                            <select name="assignedTo" class="form-control select-box" id="selectBox" multiple="multiple" disabled  style="width: 400px;">
+                                                                {% for user in users_list %}
+                                                                    <option value="{{ user.id }}" {% if user.id in selected_users %} selected="selected" {% endif %}>
+                                                                        {{ user.username }}
+                                                                    </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <span class="edit-icon" id="editIcon" title="Edit Project Phase Assigned Users">&#9998;</span>
+                                                            <button type="submit" class="save-button" id="saveButton" style="display: none;color: green;padding-top: 5px;">Save</button>
+                                                        </div>
+                                                    </form>
+                                                </div> 
+
+                                        </div>
+                                        <div class="row">
+                                            <div class="table-responsive">
+                                                <div class="table-wrapper">
+                                                    <div class="table-title">
+                                                        <div class="row">
+                                                            <div class="col-sm-10"><h5>Production Attachments</h5></div>
+                                                            <div class="col-sm-2">
+                                                                <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>File Name</th>
+                                                                <th>Tag</th>
+                                                                <th>Uploaded By</th>
+                                                                <th>Uploaded At</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for field in existing_attachments %}
+                                                            <tr>
+                                                                <td>{{ field.file_name }}</td>
+                                                                <td>{{ field.tag }}</td>
+                                                                <td>{{ field.uploaded_by }}</td>
+                                                                <td>{{ field.uploaded_at }}</td>
+                                                                <td>
+                                                                    <i class="fa fa-trash-o delete-icon" style="cursor: pointer;color:red;padding-right: 20px;" data-delete-url="{% url 'add_remove_attachment' project.id %}" data-file-path="{{ field.file_name }}"></i>
+                                                                    <a href="{% url 'download_file' file_id=field.file_id %}"><i class="fa fa-download"></i></a>
+
+                                                                      <!-- Delete Confirmation Modal -->
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                   
+                                                    </table>
+                                                     <!-- Loader content -->
+                                                     <div class="loader-container" style="display: none;">
+                                                        <div class="loader"></div>
+                                                      </div>
+                                                    <!-- Inside  -->
+                                                    <div id="csrftoken" style="display: none;">{% csrf_token %}</div>
+                                                    <!-- Delete Confirmation Modal -->
+                                                    <div class="modal fade" id="hideModalButton" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                                        <div class="modal-dialog" role="document">
+                                                          <div class="modal-content">
+                                                            <div class="modal-header">
+                                                              <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+                                                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                              </button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                              Are you sure you want to delete the file?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                              <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelButton">Cancel</button>
+                                                              <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                    </div>  
+
+                                                </div>
+                                        </div>
+                                    </div>
+                                    </div>
+
+
+
+
+                                    <div id="navpills-3" class="tab-pane">
+                                        <div class="row">
+                                            <div class="form-group">
+                                                    <form method="post" action=" {% url 'edit_phase_assignments' project.id %} ">
+                                                        {% csrf_token %}
+                                                        <div class="input-group">
+                                                            <label for="selectBox" class="text-muted m-b-15 font-12 label-inline">Assigned To:</label>
+                                                            <select name="assignedTo" class="form-control select-box" id="selectBox" multiple="multiple" disabled  style="width: 400px;">
+                                                                {% for user in users_list %}
+                                                                    <option value="{{ user.id }}" {% if user.id in selected_users %} selected="selected" {% endif %}>
+                                                                        {{ user.username }}
+                                                                    </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <span class="edit-icon" id="editIcon" title="Edit Project Phase Assigned Users">&#9998;</span>
+                                                            <button type="submit" class="save-button" id="saveButton" style="display: none;color: green;padding-top: 5px;">Save</button>
+                                                        </div>
+                                                    </form>
+                                                </div> 
+
+                                        </div>
+                                        <div class="row">
+                                            <div class="table-responsive">
+                                                <div class="table-wrapper">
+                                                    <div class="table-title">
+                                                        <div class="row">
+                                                            <div class="col-sm-10"><h5>QC Attachments</h5></div>
+                                                            <div class="col-sm-2">
+                                                                <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>File Name</th>
+                                                                <th>Tag</th>
+                                                                <th>Uploaded By</th>
+                                                                <th>Uploaded At</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for field in existing_attachments %}
+                                                            <tr>
+                                                                <td>{{ field.file_name }}</td>
+                                                                <td>{{ field.tag }}</td>
+                                                                <td>{{ field.uploaded_by }}</td>
+                                                                <td>{{ field.uploaded_at }}</td>
+                                                                <td>
+                                                                    <i class="fa fa-trash-o delete-icon" style="cursor: pointer;color:red;padding-right: 20px;" data-delete-url="{% url 'add_remove_attachment' project.id %}" data-file-path="{{ field.file_name }}"></i>
+                                                                    <a href="{% url 'download_file' file_id=field.file_id %}"><i class="fa fa-download"></i></a>
+
+                                                                      <!-- Delete Confirmation Modal -->
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                   
+                                                    </table>
+                                                     <!-- Loader content -->
+                                                     <div class="loader-container" style="display: none;">
+                                                        <div class="loader"></div>
+                                                      </div>
+                                                    <!-- Inside  -->
+                                                    <div id="csrftoken" style="display: none;">{% csrf_token %}</div>
+                                                    <!-- Delete Confirmation Modal -->
+                                                    <div class="modal fade" id="hideModalButton" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                                        <div class="modal-dialog" role="document">
+                                                          <div class="modal-content">
+                                                            <div class="modal-header">
+                                                              <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+                                                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                              </button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                              Are you sure you want to delete the file?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                              <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelButton">Cancel</button>
+                                                              <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                    </div>  
+
+                                                </div>
+                                        </div>
+                                    </div>
+                                    </div>
+
+                                    <div id="navpills-4" class="tab-pane">
+                                        <!-- <div class="row">
+                                            <div class="form-group">
+                                                    <form method="post" action=" {% url 'edit_phase_assignments' project.id %} ">
+                                                        {% csrf_token %}
+                                                        <div class="input-group">
+                                                            <label for="selectBox" class="text-muted m-b-15 font-12 label-inline">Assigned To:</label>
+                                                            <select name="assignedTo" class="form-control select-box" id="selectBox" multiple="multiple" disabled  style="width: 400px;">
+                                                                {% for user in users_list %}
+                                                                    <option value="{{ user.id }}" {% if user.id in selected_users %} selected="selected" {% endif %}>
+                                                                        {{ user.username }}
+                                                                    </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <span class="edit-icon" id="editIcon" title="Edit Project Phase Assigned Users">&#9998;</span>
+                                                            <button type="submit" class="save-button" id="saveButton" style="display: none;color: green;padding-top: 5px;">Save</button>
+                                                        </div>
+                                                    </form>
+                                                </div> 
+
+                                        </div> -->
+                                        <div class="row">
+                                            <div class="table-responsive">
+                                                <div class="table-wrapper">
+                                                    <div class="table-title">
+                                                        <div class="row">
+                                                            <div class="col-sm-10"><h5>Delivery Attachments</h5></div>
+                                                            <div class="col-sm-2">
+                                                                <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>File Name</th>
+                                                                <th>Tag</th>
+                                                                <th>Uploaded By</th>
+                                                                <th>Uploaded At</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for field in existing_attachments %}
+                                                            <tr>
+                                                                <td>{{ field.file_name }}</td>
+                                                                <td>{{ field.tag }}</td>
+                                                                <td>{{ field.uploaded_by }}</td>
+                                                                <td>{{ field.uploaded_at }}</td>
+                                                                <td>
+                                                                    <i class="fa fa-trash-o delete-icon" style="cursor: pointer;color:red;padding-right: 20px;" data-delete-url="{% url 'add_remove_attachment' project.id %}" data-file-path="{{ field.file_name }}"></i>
+                                                                    <a href="{% url 'download_file' file_id=field.file_id %}"><i class="fa fa-download"></i></a>
+
+                                                                      <!-- Delete Confirmation Modal -->
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                   
+                                                    </table>
+                                                     <!-- Loader content -->
+                                                     <div class="loader-container" style="display: none;">
+                                                        <div class="loader"></div>
+                                                      </div>
+                                                    <!-- Inside  -->
+                                                    <div id="csrftoken" style="display: none;">{% csrf_token %}</div>
+                                                    <!-- Delete Confirmation Modal -->
+                                                    <div class="modal fade" id="hideModalButton" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                                        <div class="modal-dialog" role="document">
+                                                          <div class="modal-content">
+                                                            <div class="modal-header">
+                                                              <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+                                                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                              </button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                              Are you sure you want to delete the file?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                              <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelButton">Cancel</button>
+                                                              <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                    </div>  
+
+                                                </div>
+                                        </div>
+                                    </div>
+                                    </div>
+
+
+
+                                    <div id="navpills-5" class="tab-pane">
+                                        <!-- <div class="row">
+                                            <div class="form-group">
+                                                    <form method="post" action=" {% url 'edit_phase_assignments' project.id %} ">
+                                                        {% csrf_token %}
+                                                        <div class="input-group">
+                                                            <label for="selectBox" class="text-muted m-b-15 font-12 label-inline">Assigned To:</label>
+                                                            <select name="assignedTo" class="form-control select-box" id="selectBox" multiple="multiple" disabled  style="width: 400px;">
+                                                                {% for user in users_list %}
+                                                                    <option value="{{ user.id }}" {% if user.id in selected_users %} selected="selected" {% endif %}>
+                                                                        {{ user.username }}
+                                                                    </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <span class="edit-icon" id="editIcon" title="Edit Project Phase Assigned Users">&#9998;</span>
+                                                            <button type="submit" class="save-button" id="saveButton" style="display: none;color: green;padding-top: 5px;">Save</button>
+                                                        </div>
+                                                    </form>
+                                                </div> 
+
+                                        </div> -->
+                                        <div class="row">
+                                            <div class="table-responsive">
+                                                <div class="table-wrapper">
+                                                    <div class="table-title">
+                                                        <div class="row">
+                                                            <div class="col-sm-10"><h5>Final Output</h5></div>
+                                                            <div class="col-sm-2">
+                                                                <button type="button" class="btn btn-info add-new"><i class="fa fa-plus"></i> Add New</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>File Name</th>
+                                                                <th>Tag</th>
+                                                                <th>Uploaded By</th>
+                                                                <th>Uploaded At</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for field in existing_attachments %}
+                                                            <tr>
+                                                                <td>{{ field.file_name }}</td>
+                                                                <td>{{ field.tag }}</td>
+                                                                <td>{{ field.uploaded_by }}</td>
+                                                                <td>{{ field.uploaded_at }}</td>
+                                                                <td>
+                                                                    <i class="fa fa-trash-o delete-icon" style="cursor: pointer;color:red;padding-right: 20px;" data-delete-url="{% url 'add_remove_attachment' project.id %}" data-file-path="{{ field.file_name }}"></i>
+                                                                    <a href="{% url 'download_file' file_id=field.file_id %}"><i class="fa fa-download"></i></a>
+
+                                                                      <!-- Delete Confirmation Modal -->
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                   
+                                                    </table>
+                                                     <!-- Loader content -->
+                                                     <div class="loader-container" style="display: none;">
+                                                        <div class="loader"></div>
+                                                      </div>
+                                                    <!-- Inside  -->
+                                                    <div id="csrftoken" style="display: none;">{% csrf_token %}</div>
+                                                    <!-- Delete Confirmation Modal -->
+                                                    <div class="modal fade" id="hideModalButton" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                                        <div class="modal-dialog" role="document">
+                                                          <div class="modal-content">
+                                                            <div class="modal-header">
+                                                              <h5 class="modal-title" id="deleteModalLabel">Delete Confirmation</h5>
+                                                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                              </button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                              Are you sure you want to delete the file?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                              <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelButton">Cancel</button>
+                                                              <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                    </div>  
+
+                                                </div>
+                                        </div>
+                                    </div>
+                                    </div>
+
                                     
 
                                     <!-- Tineline tab section-->
-                                    <div id="navpills-3" class="tab-pane">
+                                    <div id="navpills-6" class="tab-pane">
                                         <div class="row">
                                             <div class="col">
                                                 <div class="timeline-steps aos-init aos-animate" data-aos="fade-up">

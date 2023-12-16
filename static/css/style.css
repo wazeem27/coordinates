@@ -4686,3 +4686,16 @@ h6.h1 {
 
 
 /* Phase Completion roadmap css End */
+.label-inline {
+  display: inline-block;
+  margin-bottom: 0;
+  margin-right: 10px; /* Adjust the spacing between label and select box */
+}
+
+.input-group {
+  display: inline-block;
+}
+
+.select-box {
+  width: 400px; /* Set a larger width */
+}
