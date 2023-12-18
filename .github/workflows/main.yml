@@ -1,0 +1,25 @@
+name: Deploy to PythonAnywhere
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - v1.0.0-0-dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to PythonAnywhere
+        if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'v1.0.0-0-dev'
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_PASSWORD: ${{ secrets.PA_PASSWORD }}
+        run: |
+          git remote add pythonanywhere https://$PA_USERNAME:$PA_PASSWORD@git.pythonanywhere.com/~/coordinates
+          git push pythonanywhere HEAD:refs/heads/v1.0.0-0-dev
