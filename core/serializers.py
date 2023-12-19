@@ -39,6 +39,12 @@ class ProjectSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        title = validated_data['title']
+        existing_project = Project.objects.filter(title__iexact=title).exists()
+
+        if existing_project:
+            raise serializers.ValidationError("A project with the same name already exists.")
+
         default_phase = Phase.objects.get(name='Backlog')
         validated_data['phase'] = default_phase  # Set phase as 'Backlog' by default
 

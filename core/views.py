@@ -63,8 +63,8 @@ class ProjectUpdateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod
-    def add_timeline_entry(user, title, change_note):
-        timeline = ProjectTimeline(project_title=title, user=user, change_note=change_note, status="update")
+    def add_timeline_entry(user, project, change_note):
+        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="update")
         timeline.save()
 
 
@@ -93,6 +93,6 @@ class ProjectDeleteAPIView(APIView):
         return Response("Project deleted successfully", status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod
-    def add_timeline_entry(user, title, change_note):
-        timeline = ProjectTimeline(project_title=title, user=user, change_note=change_note, status="delete")
+    def add_timeline_entry(user, project, change_note):
+        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="delete")
         timeline.save()
