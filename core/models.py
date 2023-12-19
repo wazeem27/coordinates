@@ -22,7 +22,7 @@ class Project(models.Model):
     description = models.TextField()
     note = models.CharField(max_length=255)
     create_time = models.DateTimeField(auto_now_add=True)
-    target_end_time = models.DateTimeField(null=True)
+    target_end_time = models.DateField(null=True)
     completion_date = models.DateTimeField(null=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
