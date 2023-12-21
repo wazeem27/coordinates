@@ -7,6 +7,7 @@ from core.models import Phase, Tag
 Module to define a management command for populating initial data for Phase and Tag models.
 """
 
+
 class Command(BaseCommand):
     """
     Management command to populate initial data for Phase and Tag models.

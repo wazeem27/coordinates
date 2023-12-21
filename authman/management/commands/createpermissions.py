@@ -5,6 +5,7 @@ Management command to create permissions and assign them to groups.
 from django.core.management.base import BaseCommand
 from authman.permissions import create_permissions, create_groups
 
+
 class Command(BaseCommand):
     """
     Management command to create permissions and assign them to groups.

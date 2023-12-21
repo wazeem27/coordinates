@@ -66,6 +66,7 @@ class PhaseAssignment(models.Model):
         max_choices=3,
         max_length=3
     )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._meta.get_field('assigned_to').choices = self.get_user_choices()

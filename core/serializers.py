@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from core.models import Project, ProjectTimeline, Phase
 
+
 class DateOnlyField(serializers.DateField):
     def to_internal_value(self, value):
         # Parse the input value as a date

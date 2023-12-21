@@ -1,11 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
 from authman.permissions import IsAdminOrReadOnly
 from rest_framework import status
 from django.utils import timezone
 from rest_framework.generics import RetrieveAPIView
-from core.models import Project, ProjectTimeline, FileAttachment
+from core.models import Project, ProjectTimeline, FileAttachment, Phase
 from core.serializers import ProjectSerializer
 
 
@@ -25,7 +24,10 @@ class ProjectCreateAPIView(APIView):
             project = serializer.save(author=request.user)  # Save the project
 
             # Return success response
-            return Response({"message": f"Project '{project.title}' created successfully"}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"message": f"Project '{project.title}' created successfully"},
+                status=status.HTTP_201_CREATED
+            )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
