@@ -9,6 +9,7 @@ from rest_framework import permissions
 
 from core.models import Project, Phase  # Import necessary models
 
+
 def create_permissions():
     """
     Create permissions for project and phase actions.

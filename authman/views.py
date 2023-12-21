@@ -21,7 +21,7 @@ class LoginView(APIView):
         username = request.data.get('username')
         password = request.data.get('password')
         user = authenticate(username=username, password=password)
-        
+
         if user:
             login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
