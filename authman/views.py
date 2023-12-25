@@ -25,9 +25,14 @@ class LoginView(APIView):
         if user:
             login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
+            return Response({
+                'status': 'success', 'token': token.key
+            })
         else:
-            return Response({'error': 'Invalid credentials'}, status=401)
+            return Response({
+                'status': 'error',
+                'message': 'Invalid credentials.'
+            }, status=401)
 
 
 class LogoutView(APIView):
@@ -37,7 +42,9 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         request.auth.delete()
-        return Response({'success': 'Logged out successfully'})
+        return Response({
+            'status': 'success', 'message': 'Logged out successfully'
+        })
 
 
 class CreateUserView(APIView):
@@ -65,9 +72,14 @@ class CreateUserView(APIView):
                 user.groups.add(employee_group)
 
             user.save()
-            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    'status': 'success', 'message': 'User created successfully.'
+                }, status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'error', 'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CustomPasswordResetView(PasswordResetView):
