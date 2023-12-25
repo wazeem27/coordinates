@@ -2,8 +2,10 @@
 
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.exceptions import PermissionDenied, AuthenticationFailed
 from typing import Optional, Any, Dict, Tuple
+
 
 
 def custom_exception_handler(exc: Exception, context: Dict[str, Any]) -> Optional[Response]:
@@ -30,3 +32,15 @@ def custom_exception_handler(exc: Exception, context: Dict[str, Any]) -> Optiona
             response.data = response_data
 
     return response
+
+
+class CustomTokenAuthentication(TokenAuthentication):
+    def authenticate(self, request):
+        # Perform the default token authentication
+        user_auth_tuple = super().authenticate(request)
+
+        if user_auth_tuple is None:
+            # Customize the error message for an invalid token
+            raise AuthenticationFailed("Your custom error message for an invalid token")
+
+        return user_auth_tuple

@@ -149,7 +149,8 @@ EMAIL_HOST_PASSWORD = 'your_email_password'
 EMAIL_USE_TLS = True  # Or False if not using TLS
 DEFAULT_FROM_EMAIL = 'your_email@example.com'
 
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Replace this with your React app's domain
-]
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",  # Replace this with your React app's domain
+# ]
