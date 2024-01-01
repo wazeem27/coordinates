@@ -25,7 +25,17 @@ class LoginView(APIView):
         if user:
             login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
+            # Get user groups
+            groups = user.groups.values_list('name', flat=True)
+            role = ''
+            if user.is_superuser:
+                role = 'superuser'
+            elif groups:
+                role = groups[0].split(' ')[0].lower()
+            return Response({
+                'status': 'success', 'token': token.key,
+                'username': username, 'role': role
+            })
         else:
             return Response({'error': 'Invalid credentials'}, status=401)
 
@@ -56,10 +66,10 @@ class CreateUserView(APIView):
         try:
             validate_password(password)  # Validate password strength
             user = User.objects.create_user(username=username, email=email, password=password)
-
             if is_admin:
-                user.is_staff = True
-                user.is_superuser = True
+                admin_group = Group.objects.get(name='Admin Group')
+                user.groups.add(admin_group)
+
             elif is_employee:
                 employee_group = Group.objects.get(name='Employee Group')
                 user.groups.add(employee_group)
