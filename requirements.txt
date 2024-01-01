@@ -43,3 +43,4 @@ traitlets==5.10.1
 typing_extensions==4.8.0
 urllib3==1.26.16
 wcwidth==0.2.7
+django-cors-headers==4.3.1

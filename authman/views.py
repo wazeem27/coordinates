@@ -58,7 +58,9 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         request.auth.delete()
-        return Response({'status': 'success', 'message': 'Logged out successfully'})
+        return Response({
+            'status': 'success', 'message': 'Logged out successfully'
+        })
 
 
 class CreateUserView(APIView):
@@ -106,7 +108,9 @@ class CreateUserView(APIView):
                 status=status.HTTP_201_CREATED
             )
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'error', 'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CustomPasswordResetView(PasswordResetView):
@@ -136,7 +140,7 @@ class UserListView(APIView):
                     user_data['role'] = groups[0].split(' ')[0].lower()
                 else:
                     user_data['role'] = ''
-                user_data['flag'] = 'active' if user.is_active else 'deactivate'
+                user_data['flag'] = 'active' if user.is_active else 'deactivated'
             content.append(user_data)
         return Response({'status': 'success', 'data': content})
 

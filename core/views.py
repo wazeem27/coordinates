@@ -24,12 +24,15 @@ class ProjectCreateAPIView(APIView):
             project = serializer.save(author=request.user)  # Save the project
 
             # Return success response
-            return Response(
-                {"message": f"Project '{project.title}' created successfully"},
+            return Response({
+                'status': 'success',
+                'message': f"Project '{project.title}' created successfully"},
                 status=status.HTTP_201_CREATED
             )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'status': 'error'},
+            serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProjectUpdateAPIView(APIView):
@@ -39,7 +42,10 @@ class ProjectUpdateAPIView(APIView):
         try:
             project = Project.objects.get(pk=pk)
         except Project.DoesNotExist:
-            return Response("Project not found", status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'status': 'error', 'message': 'Project not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         serializer = ProjectSerializer(project, data=request.data, context={'request': request})
 
@@ -48,11 +54,17 @@ class ProjectUpdateAPIView(APIView):
 
             phase_id = validated_data.get('phase')
             if not phase_id or not Phase.objects.filter(id=phase_id).exists():
-                return Response("Invalid phase provided", status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'status': 'error', 'message': 'Invalid phase provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             target_end_time = validated_data.get('target_end_time')
             if target_end_time and target_end_time <= timezone.now():
-                return Response("target_end_time must be in the future", status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'status': 'error', 'message': 'Target End Time must be in the future.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             project = serializer.save()  # Save the updated project
 
@@ -60,7 +72,9 @@ class ProjectUpdateAPIView(APIView):
             title = project.title
             self.add_timeline_entry(request.user, title, f"Project '{title}' updated.")
 
-            return Response("Project updated successfully", status=status.HTTP_200_OK)
+            return Response({
+                'status': 'success', 'message': 'Project updated successfully.'
+            }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -77,14 +91,24 @@ class ProjectDeleteAPIView(APIView):
         try:
             project = Project.objects.get(pk=pk)
         except Project.DoesNotExist:
-            return Response("Project not found", status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'status': 'error', 'message': 'Project not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
 
         if project.phase.name != 'Backlog':
-            return Response("Project can only be deleted if its state is Backlog", status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'error',
+                'message': 'Project can only be deleted if its state is Backlog'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         attachments_count = FileAttachment.objects.filter(project=project).count()
         if attachments_count > 0:
-            return Response("Cannot delete project with attachments", status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'error',
+                'message': 'Cannot delete project with attachments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         project_title = project.title
         project.delete()
@@ -92,7 +116,11 @@ class ProjectDeleteAPIView(APIView):
         # Track event in ProjectTimeline for the deletion
         self.add_timeline_entry(request.user, project_title, f"Project '{project_title}' deleted.")
 
-        return Response("Project deleted successfully", status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'status': 'success',
+            'message':'Project deleted successfully'},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
     @staticmethod
     def add_timeline_entry(user, project, change_note):
