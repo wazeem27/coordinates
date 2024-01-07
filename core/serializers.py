@@ -153,3 +153,4 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ('id', 'title', 'description', 'note', 'create_time', 'target_end_time', 'completion_date', 'author', 'phase', 'file_attachments', 'phase_assignments_info')
+    
