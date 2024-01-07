@@ -7,7 +7,7 @@ from rest_framework import generics
 from django.utils import timezone
 from rest_framework.generics import RetrieveAPIView
 from core.models import Project, ProjectTimeline, FileAttachment, Phase
-from core.serializers import ProjectSerializer, ProjectListSerializer
+from core.serializers import ProjectSerializer, ProjectListSerializer, ProjectDetailSerializer
 from core.models import Project
 
 
@@ -138,3 +138,10 @@ class ProjectListView(generics.ListCreateAPIView):
     def get_queryset(self):
         projects = Project.objects.all()
         return projects
+
+
+class ProjectDetailView(generics.RetrieveAPIView):
+    queryset = Project.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectDetailSerializer
+    # You may add authentication and permissions here based on your requirements
