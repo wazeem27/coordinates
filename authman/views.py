@@ -262,3 +262,52 @@ class UserUpdateView(UpdateAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class UserReactivateView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAdminUser]  # Only accessible by superuser
+
+    def put(self, request, user_id):
+        try:
+            requesting_user = request.user
+
+            if not requesting_user.is_superuser:
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': 'Only superadmins can reactivate users.'
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            user = User.objects.get(pk=user_id)
+            if user.is_active:
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': 'User is already active.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            user.is_active = True  # Reactivate user by setting is_active to True
+            user.save()
+
+            # Log the reactivation action
+            logger.info(f'User "{requesting_user.username}" reactivated user "{user.username}"')
+
+            return Response(
+                {
+                    'status': 'success',
+                    'message': f'User "{user.username}" reactivated successfully'
+                },
+                status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'User not found'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
