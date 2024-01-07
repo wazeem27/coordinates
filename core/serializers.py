@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.utils import timezone
+from django.contrib.auth.models import User
 from core.models import Project, ProjectTimeline, Phase
+
 
 
 class DateOnlyField(serializers.DateField):
@@ -62,3 +64,23 @@ class ProjectSerializer(serializers.ModelSerializer):
     def add_timeline_entry(user, project, change_note):
         timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="add")
         timeline.save()
+
+
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username',)
+
+
+class PhaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Phase
+        fields = ('name',)
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
+    author = AuthorSerializer()
+    phase = PhaseSerializer()
+    class Meta:
+        model = Project
+        fields = '__all__'  # Add or remove fields as needed

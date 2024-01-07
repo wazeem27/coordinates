@@ -1,11 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from authman.permissions import IsAdminOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework import generics
 from django.utils import timezone
 from rest_framework.generics import RetrieveAPIView
 from core.models import Project, ProjectTimeline, FileAttachment, Phase
-from core.serializers import ProjectSerializer
+from core.serializers import ProjectSerializer, ProjectListSerializer
+from core.models import Project
 
 
 class ProjectDetailAPIView(RetrieveAPIView):
@@ -126,3 +129,12 @@ class ProjectDeleteAPIView(APIView):
     def add_timeline_entry(user, project, change_note):
         timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="delete")
         timeline.save()
+
+
+class ProjectListView(generics.ListCreateAPIView):
+    serializer_class = ProjectListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        projects = Project.objects.all()
+        return projects

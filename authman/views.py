@@ -75,10 +75,12 @@ class CreateUserView(APIView):
         password = serializer.validated_data['password']
         is_admin = serializer.validated_data.get('is_admin', False)
         is_employee = serializer.validated_data.get('is_employee', False)
+        first_name = serializer.validated_data['first_name']
+        last_name = serializer.validated_data['last_name']
 
         try:
             validate_password(password)  # Validate password strength
-            user = User.objects.create_user(username=username, email=email, password=password)
+
             if is_admin and is_employee:
                 return Response(
                     {
@@ -87,6 +89,21 @@ class CreateUserView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            elif not is_admin and not is_employee:
+                # role should be either admin or employee
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': 'User should be either admin/employee.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            user = User.objects.create_user(
+                username=username, email=email, password=password,
+                first_name=first_name, last_name=last_name
+            )
+
             if is_admin:
                 admin_group = Group.objects.get(name='Admin Group')
                 user.groups.add(admin_group)
@@ -102,14 +119,16 @@ class CreateUserView(APIView):
                     'data': {
                         'username': username,
                         'email': email,
+                        'first_name': first_name,
+                        'last_name': last_name,
                         'role': 'admin' if is_admin else 'employee'
                     }
                 },
                 status=status.HTTP_201_CREATED
             )
-        except Exception as e:
+        except Exception as error:
             return Response({
-                'status': 'error', 'message': str(e)
+                'status': 'error', 'message': str(error)
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -232,12 +251,14 @@ class UserUpdateView(UpdateAPIView):
                         'message': 'Unauthorized access'},
                         status=status.HTTP_401_UNAUTHORIZED
                 )
-        
-        except Exception as e:
+            # str(error.detail['username'][0])
+        except Exception as error:
+            error_message = "\n".join([str(err[0]) for err in  error.detail.values()])
             logger.exception("An error occurred while updating user details")
             return Response(
                 {
                     'status': 'error',
-                    'message': 'An error occurred while processing your request'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    'message': error_message
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
