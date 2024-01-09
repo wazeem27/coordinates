@@ -64,6 +64,30 @@ class ProjectAPIView(APIView):
         else:
             permission_classes = [IsAuthenticated]  # Default permission (e.g., for GET)
         return [permission() for permission in permission_classes]
+    
+    def get(self, request, pk):
+        try:
+            project = Project.objects.get(pk=pk)
+        except Project.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'Project not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Serialize project data or build response as needed
+        serialized_data = {
+            'id': project.id,
+            'title': project.title,
+            'description': project.description,
+            'note': project.note,
+            'target_end_time': project.target_end_time,
+            'phase': project.phase.name,
+            'create_time': project.create_time,
+            'author': project.author.username,
+            # Include other fields as required
+        }
+
+        return Response(serialized_data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
         try:
