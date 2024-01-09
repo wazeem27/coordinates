@@ -47,63 +47,71 @@ class ProjectCreateAPIView(APIView):
                 }},
                 status=status.HTTP_201_CREATED
             )
-
         return Response(
-            {'status': 'error'},
-            serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            {'status': 'error', "message": "Project 'title' cannot be empty."},
+            status=status.HTTP_400_BAD_REQUEST)
 
 
-class ProjectUpdateAPIView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
+class ProjectAPIView(APIView):
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            permission_classes = [IsAdminOrReadOnly]  # Permission for POST method
+        elif self.request.method == 'PUT':
+            permission_classes = [IsAdminOrReadOnly]  # Permission for PUT method
+        elif self.request.method == 'DELETE':
+            permission_classes = [IsAdminOrReadOnly]  # Permission for DEL method
+        else:
+            permission_classes = [IsAuthenticated]  # Default permission (e.g., for GET)
+        return [permission() for permission in permission_classes]
 
     def put(self, request, pk):
         try:
             project = Project.objects.get(pk=pk)
         except Project.DoesNotExist:
-            return Response({
-                'status': 'error', 'message': 'Project not found'},
+            return Response(
+                {'status': 'error', 'message': 'Project not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = ProjectSerializer(project, data=request.data, context={'request': request})
+        title = request.data.get('title')
+        target_end_time = request.data.get('target_end_time')
 
-        if serializer.is_valid():
-            validated_data = serializer.validated_data
-
-            phase_id = validated_data.get('phase')
-            if not phase_id or not Phase.objects.filter(id=phase_id).exists():
+        if title and '<script>' not in title and project.title != title:
+            if not Project.objects.filter(title=title):
+                project.title = title
+            else:
                 return Response({
-                    'status': 'error', 'message': 'Invalid phase provided'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                    'status': 'error',
+                    'message': f'project with title "{title}" already exist.'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            target_end_time = validated_data.get('target_end_time')
-            if target_end_time and target_end_time <= timezone.now():
+        if target_end_time:
+            if target_end_time <= str(timezone.now().date()):
                 return Response({
-                    'status': 'error', 'message': 'Target End Time must be in the future.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                    'status': 'error', 'message': 'Target End Time must be in the future.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            project.target_end_time = target_end_time
 
-            project = serializer.save()  # Save the updated project
+        description = request.data.get('description')
+        if isinstance(description, str):
+            project.description = description
 
-            # Track event in ProjectTimeline for the update
-            title = project.title
-            self.add_timeline_entry(request.user, title, f"Project '{title}' updated.")
+        note = request.data.get('note')
+        if isinstance(note, str):
+            project.note = note
 
-            return Response({
-                'status': 'success', 'message': 'Project updated successfully.'
-            }, status=status.HTTP_200_OK)
+        project.save()
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Track event in ProjectTimeline for the update
+        title = project.title
+        self.add_timeline_entry(
+            request.user, project, f"Project '{title}' updated.", "update"
+        )
 
-    @staticmethod
-    def add_timeline_entry(user, project, change_note):
-        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="update")
-        timeline.save()
-
-
-class ProjectDeleteAPIView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
+        return Response({
+            'status': 'success', 'message': 'Project updated successfully.'
+        }, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         try:
@@ -128,11 +136,11 @@ class ProjectDeleteAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        project_title = project.title
-        project.delete()
-
         # Track event in ProjectTimeline for the deletion
-        self.add_timeline_entry(request.user, project_title, f"Project '{project_title}' deleted.")
+        self.add_timeline_entry(
+            request.user, project, f"Project '{project.title}' deleted.", "delete"
+        )
+        project.delete()
 
         return Response({
             'status': 'success',
@@ -141,8 +149,8 @@ class ProjectDeleteAPIView(APIView):
         )
 
     @staticmethod
-    def add_timeline_entry(user, project, change_note):
-        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="delete")
+    def add_timeline_entry(user, project, change_note, event_type):
+        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status=event_type)
         timeline.save()
 
 
