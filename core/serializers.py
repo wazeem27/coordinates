@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from django.utils import timezone
 from django.contrib.auth.models import User
-from core.models import Project, Phase, Tag, FileAttachment, PhaseAssignment, AssignmentDetail
-
+from core.models import (
+    Project, Phase, Tag, FileAttachment, PhaseAssignment, AssignmentDetail,
+    ProjectTimeline
+)
 
 
 class DateOnlyField(serializers.DateField):

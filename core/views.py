@@ -10,6 +10,11 @@ from core.models import Project, ProjectTimeline, FileAttachment, Phase
 from core.serializers import ProjectSerializer, ProjectListSerializer, ProjectDetailSerializer
 from core.models import Project
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 
 class ProjectDetailAPIView(RetrieveAPIView):
     queryset = Project.objects.all()
@@ -29,7 +34,17 @@ class ProjectCreateAPIView(APIView):
             # Return success response
             return Response({
                 'status': 'success',
-                'message': f"Project '{project.title}' created successfully"},
+                'message': f"Project '{project.title}' created successfully",
+                'data': {
+                    'id': project.id,
+                    'title': project.title,
+                    'description': project.description,
+                    'note': project.note,
+                    'author': project.author.username,
+                    'target_end_time': project.target_end_time,
+                    'phase': project.phase.name,
+                    'create_time': project.create_time
+                }},
                 status=status.HTTP_201_CREATED
             )
 
@@ -175,11 +190,3 @@ class ProjectDetailView(generics.RetrieveAPIView):
         # response["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
 
         return response
-
-
-
-class ProjectDetailView(generics.RetrieveAPIView):
-    queryset = Project.objects.all()
-    permission_classes = [IsAuthenticated]
-    serializer_class = ProjectDetailSerializer
-    # You may add authentication and permissions here based on your requirements
