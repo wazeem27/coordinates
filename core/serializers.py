@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from django.utils import timezone
-from core.models import Project, ProjectTimeline, Phase
+from django.contrib.auth.models import User
+from core.models import (
+    Project, Phase, Tag, FileAttachment, PhaseAssignment, AssignmentDetail,
+    ProjectTimeline
+)
 
 
 class DateOnlyField(serializers.DateField):
@@ -62,3 +66,93 @@ class ProjectSerializer(serializers.ModelSerializer):
     def add_timeline_entry(user, project, change_note):
         timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="add")
         timeline.save()
+
+
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username',)
+
+
+class PhaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Phase
+        fields = ('name',)
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
+    author = AuthorSerializer()
+    phase = PhaseSerializer()
+    class Meta:
+        model = Project
+        fields = '__all__'  # Add or remove fields as needed
+
+
+######################### Project detail serializer
+
+class PhaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Phase
+        fields = ('id', 'name', 'description')
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email')
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ('id', 'name')
+
+class FileAttachmentSerializer(serializers.ModelSerializer):
+    tag = TagSerializer()
+    uploaded_by = UserSerializer()
+
+    class Meta:
+        model = FileAttachment
+        fields = ('id', 'file_name', 'create_time', 'tag', 'uploaded_by', 'phase')
+
+class AssignmentDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignmentDetail
+        fields = ('id', 'note', 'end_date')
+
+class PhaseAssignmentSerializer(serializers.ModelSerializer):
+    assigned_to = UserSerializer(many=True)
+    assignment_details = AssignmentDetailSerializer(many=True)
+
+    class Meta:
+        model = PhaseAssignment
+        fields = ('id', 'phase', 'assigned_date', 'assigned_by', 'status', 'assigned_to', 'assignment_details')
+
+
+class ProjectDetailSerializer(serializers.ModelSerializer):
+    author = UserSerializer()
+    phase = PhaseSerializer()
+    phase_assignments = PhaseAssignmentSerializer(many=True)
+
+    class Meta:
+        model = Project
+        fields = ('id', 'title', 'description', 'note', 'create_time', 'target_end_time', 'completion_date', 'author', 'phase', 'phase_assignments')
+
+class ProjectFileAttachmentSerializer(serializers.ModelSerializer):
+    tag = TagSerializer()
+    uploaded_by = UserSerializer()
+
+    class Meta:
+        model = FileAttachment
+        fields = ('id', 'file_name', 'create_time', 'tag', 'uploaded_by', 'phase')
+
+class ProjectDetailSerializer(serializers.ModelSerializer):
+    author = UserSerializer()
+    phase = PhaseSerializer()
+    file_attachments = ProjectFileAttachmentSerializer(source='fileattachment_set', many=True)  # Use related name here
+
+    # Rename the field from `phase_assignments` to `phase_assignments_info`
+    phase_assignments_info = PhaseAssignmentSerializer(source='phaseassignment_set', many=True)
+
+    class Meta:
+        model = Project
+        fields = ('id', 'title', 'description', 'note', 'create_time', 'target_end_time', 'completion_date', 'author', 'phase', 'file_attachments', 'phase_assignments_info')
+    

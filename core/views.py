@@ -1,11 +1,19 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from authman.permissions import IsAdminOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework import generics
 from django.utils import timezone
 from rest_framework.generics import RetrieveAPIView
 from core.models import Project, ProjectTimeline, FileAttachment, Phase
-from core.serializers import ProjectSerializer
+from core.serializers import ProjectSerializer, ProjectListSerializer, ProjectDetailSerializer
+from core.models import Project
+
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectDetailAPIView(RetrieveAPIView):
@@ -26,66 +34,108 @@ class ProjectCreateAPIView(APIView):
             # Return success response
             return Response({
                 'status': 'success',
-                'message': f"Project '{project.title}' created successfully"},
+                'message': f"Project '{project.title}' created successfully",
+                'data': {
+                    'id': project.id,
+                    'title': project.title,
+                    'description': project.description,
+                    'note': project.note,
+                    'author': project.author.username,
+                    'target_end_time': project.target_end_time,
+                    'phase': project.phase.name,
+                    'create_time': project.create_time
+                }},
                 status=status.HTTP_201_CREATED
             )
-
         return Response(
-            {'status': 'error'},
-            serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            {'status': 'error', "message": "Project 'title' cannot be empty."},
+            status=status.HTTP_400_BAD_REQUEST)
 
 
-class ProjectUpdateAPIView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
+class ProjectAPIView(APIView):
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            permission_classes = [IsAdminOrReadOnly]  # Permission for POST method
+        elif self.request.method == 'PUT':
+            permission_classes = [IsAdminOrReadOnly]  # Permission for PUT method
+        elif self.request.method == 'DELETE':
+            permission_classes = [IsAdminOrReadOnly]  # Permission for DEL method
+        else:
+            permission_classes = [IsAuthenticated]  # Default permission (e.g., for GET)
+        return [permission() for permission in permission_classes]
+    
+    def get(self, request, pk):
+        try:
+            project = Project.objects.get(pk=pk)
+        except Project.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'Project not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Serialize project data or build response as needed
+        serialized_data = {
+            'id': project.id,
+            'title': project.title,
+            'description': project.description,
+            'note': project.note,
+            'target_end_time': project.target_end_time,
+            'phase': project.phase.name,
+            'create_time': project.create_time,
+            'author': project.author.username,
+            # Include other fields as required
+        }
+
+        return Response(serialized_data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
         try:
             project = Project.objects.get(pk=pk)
         except Project.DoesNotExist:
-            return Response({
-                'status': 'error', 'message': 'Project not found'},
+            return Response(
+                {'status': 'error', 'message': 'Project not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = ProjectSerializer(project, data=request.data, context={'request': request})
+        title = request.data.get('title')
+        target_end_time = request.data.get('target_end_time')
 
-        if serializer.is_valid():
-            validated_data = serializer.validated_data
-
-            phase_id = validated_data.get('phase')
-            if not phase_id or not Phase.objects.filter(id=phase_id).exists():
+        if title and '<script>' not in title and project.title != title:
+            if not Project.objects.filter(title=title):
+                project.title = title
+            else:
                 return Response({
-                    'status': 'error', 'message': 'Invalid phase provided'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                    'status': 'error',
+                    'message': f'project with title "{title}" already exist.'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            target_end_time = validated_data.get('target_end_time')
-            if target_end_time and target_end_time <= timezone.now():
+        if target_end_time:
+            if target_end_time <= str(timezone.now().date()):
                 return Response({
-                    'status': 'error', 'message': 'Target End Time must be in the future.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                    'status': 'error', 'message': 'Target End Time must be in the future.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            project.target_end_time = target_end_time
 
-            project = serializer.save()  # Save the updated project
+        description = request.data.get('description')
+        if isinstance(description, str):
+            project.description = description
 
-            # Track event in ProjectTimeline for the update
-            title = project.title
-            self.add_timeline_entry(request.user, title, f"Project '{title}' updated.")
+        note = request.data.get('note')
+        if isinstance(note, str):
+            project.note = note
 
-            return Response({
-                'status': 'success', 'message': 'Project updated successfully.'
-            }, status=status.HTTP_200_OK)
+        project.save()
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Track event in ProjectTimeline for the update
+        title = project.title
+        self.add_timeline_entry(
+            request.user, project, f"Project '{title}' updated.", "update"
+        )
 
-    @staticmethod
-    def add_timeline_entry(user, project, change_note):
-        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="update")
-        timeline.save()
-
-
-class ProjectDeleteAPIView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
+        return Response({
+            'status': 'success', 'message': 'Project updated successfully.'
+        }, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         try:
@@ -110,11 +160,11 @@ class ProjectDeleteAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        project_title = project.title
-        project.delete()
-
         # Track event in ProjectTimeline for the deletion
-        self.add_timeline_entry(request.user, project_title, f"Project '{project_title}' deleted.")
+        self.add_timeline_entry(
+            request.user, project, f"Project '{project.title}' deleted.", "delete"
+        )
+        project.delete()
 
         return Response({
             'status': 'success',
@@ -123,6 +173,52 @@ class ProjectDeleteAPIView(APIView):
         )
 
     @staticmethod
-    def add_timeline_entry(user, project, change_note):
-        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status="delete")
+    def add_timeline_entry(user, project, change_note, event_type):
+        timeline = ProjectTimeline(project=project, user=user, change_note=change_note, status=event_type)
         timeline.save()
+
+
+class ProjectListView(generics.ListCreateAPIView):
+    serializer_class = ProjectListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        projects = Project.objects.all()
+        return projects
+
+
+class ProjectDetailView(generics.RetrieveAPIView):
+    queryset = Project.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectDetailSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            # Add input validation and sanitization here if needed
+
+            # Rate limiting and throttling can be applied using Django REST Framework's built-in classes
+
+            serializer = self.get_serializer(instance)
+            logger.info(f"Project detail retrieved for Project ID: {instance.id} by user: {request.user.username}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Project.DoesNotExist:
+            logger.error(f"Requested project does not exist")
+            return Response({"status": "error", "message": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(f"Error retrieving project detail: {str(e)}")
+            return Response({"message": "Error retrieving project detail"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Override finalize_response to add security headers, content security policy, etc.
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        # Add security headers (e.g., X-Content-Type-Options, X-Frame-Options, X-XSS-Protection) to the response
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-Frame-Options"] = "DENY"
+        response["X-XSS-Protection"] = "1; mode=block"
+
+        # Implement Content Security Policy (CSP) headers to mitigate XSS attacks
+        # Example:
+        # response["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+
+        return response

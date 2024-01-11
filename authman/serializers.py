@@ -9,6 +9,8 @@ class UserCreateSerializer(serializers.Serializer):
     password_confirm = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     is_admin = serializers.BooleanField(required=False, default=False)
     is_employee = serializers.BooleanField(required=False, default=False)
+    first_name = serializers.CharField(write_only=True, required=True)
+    last_name = serializers.CharField(write_only=True, required=True)
 
     def validate(self, data):
         if data.get('password') != data.get('password_confirm'):
