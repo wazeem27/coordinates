@@ -77,7 +77,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 class PhaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Phase
-        fields = ('name',)
+        fields = ('id', 'name', 'description')
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
@@ -90,10 +90,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
 ######################### Project detail serializer
 
-class PhaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Phase
-        fields = ('id', 'name', 'description')
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -105,18 +101,11 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
         fields = ('id', 'name')
 
-class FileAttachmentSerializer(serializers.ModelSerializer):
-    tag = TagSerializer()
-    uploaded_by = UserSerializer()
-
-    class Meta:
-        model = FileAttachment
-        fields = ('id', 'file_name', 'create_time', 'tag', 'uploaded_by', 'phase')
 
 class AssignmentDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentDetail
-        fields = ('id', 'note', 'end_date')
+        fields = ('note', 'end_date', 'status', 'assigned_to')
 
 class PhaseAssignmentSerializer(serializers.ModelSerializer):
     assigned_to = UserSerializer(many=True)
@@ -127,32 +116,43 @@ class PhaseAssignmentSerializer(serializers.ModelSerializer):
         fields = ('id', 'phase', 'assigned_date', 'assigned_by', 'status', 'assigned_to', 'assignment_details')
 
 
-class ProjectDetailSerializer(serializers.ModelSerializer):
-    author = UserSerializer()
-    phase = PhaseSerializer()
-    phase_assignments = PhaseAssignmentSerializer(many=True)
-
-    class Meta:
-        model = Project
-        fields = ('id', 'title', 'description', 'note', 'create_time', 'target_end_time', 'completion_date', 'author', 'phase', 'phase_assignments')
-
-class ProjectFileAttachmentSerializer(serializers.ModelSerializer):
-    tag = TagSerializer()
-    uploaded_by = UserSerializer()
+class FileAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by = serializers.SerializerMethodField()
+    phase_name = serializers.SerializerMethodField()
 
     class Meta:
         model = FileAttachment
-        fields = ('id', 'file_name', 'create_time', 'tag', 'uploaded_by', 'phase')
+        fields = ('id', 'file_name', 'create_time', 'tag', 'uploaded_by', 'phase_name')
+    
+    def get_uploaded_by(self, obj):
+        return obj.uploaded_by.username if obj.uploaded_by else None
+    
+    def get_phase_name(self, obj):
+        return obj.phase.name if obj.phase else None
+
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
-    author = UserSerializer()
-    phase = PhaseSerializer()
-    file_attachments = ProjectFileAttachmentSerializer(source='fileattachment_set', many=True)  # Use related name here
-
-    # Rename the field from `phase_assignments` to `phase_assignments_info`
-    phase_assignments_info = PhaseAssignmentSerializer(source='phaseassignment_set', many=True)
+    attachments = serializers.SerializerMethodField()
+    phases = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
+    phase = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
-        fields = ('id', 'title', 'description', 'note', 'create_time', 'target_end_time', 'completion_date', 'author', 'phase', 'file_attachments', 'phase_assignments_info')
+        fields = ('id', 'title', 'attachments', 'phase', 'phases', 'description', 'note', 'create_time', 'target_end_time', 'completion_date', 'author')
+
+    def get_attachments(self, obj):
+        attachments = FileAttachment.objects.filter(project=obj)
+        serializer = FileAttachmentSerializer(attachments, many=True)
+        return serializer.data
+
+    def get_phases(self, obj):
+        phase_assignments = PhaseAssignment.objects.filter(project=obj)
+        serializer = PhaseAssignmentSerializer(phase_assignments, many=True)
+        return {f'phase{assignment.phase_id}': serializer.data[index] for index, assignment in enumerate(phase_assignments)}
     
+    def get_author(self, obj):
+        return obj.author.username if obj.author else None
+    
+    def get_phase(self, obj):
+        return obj.phase.name
