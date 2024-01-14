@@ -190,9 +190,11 @@ class AddRemoveAttachmentAPIView(APIView):
 
         try:
             file = request.data.get('file')
-            tag_id = request.data.get('tag')
+            tag_id = request.data.get('tag', '')
+            logger.info(f"Tag ID form request is --> {tag_id}")
+            logger.info(f"Input File is ---> {file}")
 
-            if not (tag_id and file):
+            if not (tag_id != '' and file):
                 return Response(
                     {
                         "status": "error",
@@ -200,6 +202,7 @@ class AddRemoveAttachmentAPIView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            tag_id = int(tag_id)  # convert it to integer
 
             if project.phase.name == 'Backlog' and not request.user.is_staff:
                 raise Response(
@@ -212,9 +215,11 @@ class AddRemoveAttachmentAPIView(APIView):
 
             tag = get_object_or_404(Tag, pk=tag_id)
             file_path = f"{project.title}/{project.phase.name}/{tag.name}/{file.name}"
+            logger.info(f"File path to be stored is {file_path}.")
 
             # Initiating S3 Multipart Upload
             upload_id = initiate_s3_multipart_upload(file_path)
+            logger.info(f"Upload ID generated is {upload_id}")
 
             # Uploading file parts to S3
             upload_parts = []
@@ -235,6 +240,7 @@ class AddRemoveAttachmentAPIView(APIView):
                 # Populate other model fields as needed
             )
             attachment_instance.save()
+            logger.info(f"Attachment detail is stored successfully in db {attachment_instance}")
 
             message = f'Added {file.name} attachment to "{project.title}" successfully.'
             timeline = ProjectTimeline(
@@ -243,6 +249,7 @@ class AddRemoveAttachmentAPIView(APIView):
                 status="add"
             )
             timeline.save()
+            logger.info(f"")
 
             return Response(
                 {
