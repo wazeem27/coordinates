@@ -16,11 +16,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ProjectDetailAPIView(RetrieveAPIView):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
-    permission_classes = [IsAdminOrReadOnly]  # Adjust permissions as needed
-
 
 class ProjectCreateAPIView(APIView):
     permission_classes = [IsAdminOrReadOnly]
@@ -187,38 +182,5 @@ class ProjectListView(generics.ListCreateAPIView):
         return projects
 
 
-class ProjectDetailView(generics.RetrieveAPIView):
-    queryset = Project.objects.all()
-    permission_classes = [IsAuthenticated]
-    serializer_class = ProjectDetailSerializer
-
-    def retrieve(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            # Add input validation and sanitization here if needed
-
-            # Rate limiting and throttling can be applied using Django REST Framework's built-in classes
-
-            serializer = self.get_serializer(instance)
-            logger.info(f"Project detail retrieved for Project ID: {instance.id} by user: {request.user.username}")
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Project.DoesNotExist:
-            logger.error(f"Requested project does not exist")
-            return Response({"status": "error", "message": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.exception(f"Error retrieving project detail: {str(e)}")
-            return Response({"message": "Error retrieving project detail"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # Override finalize_response to add security headers, content security policy, etc.
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        # Add security headers (e.g., X-Content-Type-Options, X-Frame-Options, X-XSS-Protection) to the response
-        response["X-Content-Type-Options"] = "nosniff"
-        response["X-Frame-Options"] = "DENY"
-        response["X-XSS-Protection"] = "1; mode=block"
-
-        # Implement Content Security Policy (CSP) headers to mitigate XSS attacks
-        # Example:
-        # response["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
-
-        return response
+class UploadProjectInputFiles(APIView):
+    pass

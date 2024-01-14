@@ -1,7 +1,10 @@
 # urls.py
 
 from django.urls import path
-from .views import CreateUserView, UserListView, UserDeactivateView, UserUpdateView, UserReactivateView
+from .views import (
+    CreateUserView, UserListView, UserDeactivateView,
+    UserUpdateView, UserReactivateView, ChangePasswordView
+)
 
 
 urlpatterns = [
@@ -10,6 +13,7 @@ urlpatterns = [
     path('users/<int:user_id>/deactivate/', UserDeactivateView.as_view(), name='user-deactivate'),
     path('users/<int:user_id>/activate/', UserReactivateView.as_view(), name='user-activate'),
     path('users/<int:pk>/update/', UserUpdateView.as_view(), name='user-update'),
+    path('update/password/', ChangePasswordView.as_view(), name='password-update'),
     # Django's built-in password reset URLs
     # path('api/password-reset/', include('django.contrib.auth.urls')),
 ]

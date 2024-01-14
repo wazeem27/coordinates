@@ -10,10 +10,14 @@ from rest_framework.permissions import IsAdminUser
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.views import PasswordResetView
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 
 import logging
 
-from .serializers import UserCreateSerializer, UserUpdateSerializer, UserPasswordUpdateSerializer
+from .serializers import (
+    UserCreateSerializer, UserUpdateSerializer, UserPasswordUpdateSerializer
+)
 
 
 
@@ -262,6 +266,72 @@ class UserUpdateView(UpdateAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ChangePasswordView(UpdateAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        # Ensure old_password, new_password, and retype_password are provided
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password1")
+        retype_password = request.data.get("new_password2")
+
+        if not (old_password and new_password and retype_password):
+            return Response(
+                {"status": "error", "message": "All password fields are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if the old password is correct
+        if not self.object.check_password(old_password):
+            return Response(
+                {"status": "error", "message": "Incorrect old password."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if the new password and retype_password match
+        if new_password != retype_password:
+            return Response(
+                {"status": "error", "message": "New password and retype password do not match."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if the new password is different from the old one
+        if old_password == new_password:
+            return Response(
+                {
+                    "status": "error",
+                    "message": "New password should be different from the old password."
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Use Django's PasswordChangeForm for additional security checks
+        form = PasswordChangeForm(user=self.object, data=request.data)
+
+        if form.is_valid():
+            # The form handles password updating and validation
+            form.save()
+
+            # Ensure the user stays logged in after password change
+            update_session_auth_hash(request, self.object)
+
+            return Response(
+                {"status": "success", "message": "Password updated successfully."},
+                status=status.HTTP_200_OK
+            )
+        else:
+            # Handle form errors
+            return Response(
+                {"status": "error", "message": form.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 class UserReactivateView(APIView):
     authentication_classes = [TokenAuthentication]
