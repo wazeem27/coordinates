@@ -393,6 +393,20 @@ class AssignProjectPhaseView(APIView):
         phase_note = request.data.get('phase_note', '')
         phase_end_date = request.data.get('phase_end_date')
         user_queryset = User.objects.filter(id__in=user_to_be_assigned)
+        logger.info(f"Assignee list are {user_queryset}")
+        logger.info(f"Phase to assign is {phase_to_assign}")
+        logger.info(f"Phase Note is {phase_note}")
+        logger.info(f"Phase end date is {phase_end_date}")
+        try:
+            # process end date to check validtity
+            end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
+        except Exception as error:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': f'Invalid End Date time give {phase_end_date}'
+                }, status=status.HTTP_404_NOT_FOUND
+            )
         
 
         # base case if current phase is backlog and users list is [] (empty) throw error
