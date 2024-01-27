@@ -68,7 +68,7 @@ class PhaseAssignment(models.Model):
 class AssignmentDetail(models.Model):
     assignment = models.ForeignKey(PhaseAssignment, on_delete=models.CASCADE)
     note = models.TextField()
-    end_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
 
 class PhaseStatus(models.Model):

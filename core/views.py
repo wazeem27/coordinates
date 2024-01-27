@@ -400,7 +400,7 @@ class AssignProjectPhaseView(APIView):
             )
 
         try:
-            end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p') if phase_end_date else None
+            end_date = datetime.strptime(phase_end_date, "%d%m%Y").date() if phase_end_date else None
         except ValueError as error:
             logger.error(f"Invalid End Date time given: {phase_end_date}")
             return Response({'status': 'error', 'message': 'Invalid End Date time'}, status=status.HTTP_400_BAD_REQUEST)
@@ -514,10 +514,10 @@ class AssignProjectPhaseView(APIView):
                 assignment_detail.note = phase_note
                 assignment_detail.save()
             if (phase_end_date and
-                    assignment_detail.end_date != datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')):
+                    assignment_detail.end_date != datetime.strptime(phase_end_date, "%d%m%Y").date()):
                 
                 phase_note_and_date_event = True
-                assignment_detail.end_date =  datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
+                assignment_detail.end_date = datetime.strptime(phase_end_date, "%d%m%Y").date()
                 assignment_detail.save()
             
             # Update event in project timeline
