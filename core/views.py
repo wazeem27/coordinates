@@ -71,7 +71,7 @@ class ProjectAPIView(APIView):
         else:
             permission_classes = [IsAuthenticated]  # Default permission (e.g., for GET)
         return [permission() for permission in permission_classes]
-
+    
     def get(self, request, pk):
         try:
             project = Project.objects.get(pk=pk)
@@ -80,7 +80,7 @@ class ProjectAPIView(APIView):
                 {'status': 'error', 'message': 'Project not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
+        
         serializer = ProjectDetailSerializer(project)
         serialized_data = serializer.data
 
@@ -378,162 +378,220 @@ class AssignProjectPhaseView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        try:
-            project = Project.objects.get(id=pk)
-        except Exception as error:
-            logger.error(f"project with id {pk} does not exist.")
-            return Response(
-                {
-                    'status': 'error',
-                    'message': 'Project Not found'
-                }, status=status.HTTP_404_NOT_FOUND
-            )
-        user_to_be_assigned = request.data.getlist('user_ids')
-        phase_to_assign = request.data.get('phase_to_assign')
+        project = get_object_or_404(Project, id=pk)
+        user_ids = list(set(request.data.getlist('user_ids', [])))
+        phase_to_assign = request.data.get('phase_to_assign', '').title()
         phase_note = request.data.get('phase_note', '')
-        phase_end_date = request.data.get('phase_end_date')
-        user_queryset = User.objects.filter(id__in=user_to_be_assigned)
-        logger.info(f"Assignee list are {user_queryset}")
-        logger.info(f"Phase to assign is {phase_to_assign}")
-        logger.info(f"Phase Note is {phase_note}")
-        logger.info(f"Phase end date is {phase_end_date}")
+        phase_end_date = request.data.get('phase_end_date', '')
+
+        logger.debug(f"Assignee list: {user_ids}")
+        logger.debug(f"Phase to assign: {phase_to_assign}")
+        logger.debug(f"Phase Note: {phase_note}")
+        logger.debug(f"Phase end date: {phase_end_date}")
+
+        # validate incoming assignee_ids
         try:
-            # process end date to check validtity
-            if phase_end_date:
-                end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
+            is_valid_users = list(map(lambda x: int(x), user_ids))
         except Exception as error:
             return Response(
                 {
-                    'status': 'error',
-                    'message': f'Invalid End Date time give {phase_end_date}'
-                }, status=status.HTTP_404_NOT_FOUND
-            )
-
-
-        # base case if current phase is backlog and users list is [] (empty) throw error
-        if project.phase.name =='Backlog' and not user_to_be_assigned:
-            return Response(
-                {
-                    'status': 'error', 'message': 'Add atleast one user in assign list.'
+                    'status': 'error', 'message': f"Invalid user ID's given {user_ids}"
                 }, status=status.HTTP_400_BAD_REQUEST
             )
-        elif project.phase.name and phase_to_assign.title():
-            return Response(
-                    {'status': 'error', 'message': 'Current project Phase is same as that your are trying to move.'},
-                    status=status.HTTP_400_BAD_REQUEST
 
-                )
-        elif project.phase.name =='Backlog' and not FileAttachment.objects.filter(project=project):
+        try:
+            end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p') if phase_end_date else None
+        except ValueError as error:
+            logger.error(f"Invalid End Date time given: {phase_end_date}")
+            return Response({'status': 'error', 'message': 'Invalid End Date time'}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_phase_names = [choice[0].title() for choice in Phase.PHASE_CHOICES]
+        if phase_to_assign not in valid_phase_names:
+            logger.error(f"Invalid phase: {phase_to_assign}")
+            return Response({'status': 'error', 'message': 'Invalid phase'}, status=status.HTTP_400_BAD_REQUEST)
+
+        elif phase_to_assign.title() == 'Backlog':
             return Response(
                 {
                     'status': 'error',
-                    'message': 'Add atleast one attachmnt before assigning phase to User'
+                    'message': (
+                        'You are trying to move Project Phase from Backlog to Backlog '
+                        'which is Invalid.')
                 }, status=status.HTTP_400_BAD_REQUEST
             )
-        elif phase_to_assign.title() not in ['Production', 'QC', 'Delivery']:
+        
+        # handle phase cannot be moved from one to another except backlog
+        if project.phase.name == 'Backlog' and phase_to_assign.title() != 'Production':
             return Response(
                 {
-                    'status': 'error', 'message': f'Invalid phase "{phase_to_assign}"'
+                    'status': 'error',
+                    'message': (
+                        'You are tryng to move Project phase form backlog to QC '
+                        'which is not allowed')
                 }, status=status.HTTP_400_BAD_REQUEST
             )
+        if project.phase.name != 'Backlog' and project.phase.name.title() != phase_to_assign.title():
+            return Response(
+                {
+                    'status': 'error',
+                    'message': (
+                        'Project cannot be moved from one phase to another '
+                        'before current phase is marked as completed'
+                    )
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+            
 
-        elif phase_to_assign and user_to_be_assigned:
-            user_queryset = User.objects.filter(id__in=user_to_be_assigned)
-            if len(user_queryset) != len(user_to_be_assigned):
-                # Check if all user IDs were found in the queryset
-                found_user_ids = {str(user.id) for user in user_queryset}
-                missing_user_ids = set(user_to_be_assigned) - found_user_ids
+        def move_to_backlog():
+            previous_phase = PhaseAssignment.objects.filter(project=project, phase__name=phase_to_assign)
+            previous_phase.delete()
+            timeline = ProjectTimeline.objects.create(
+                project=project, user=self.request.user,
+                change_note=f"Moved project Phase from 'Production' to 'Backlog",
+                status="update"
+            )
+            backlog_phase = Phase.objects.get(name='Backlog')
+            project.phase = backlog_phase
+            project.save()
+            msg = "Project moved back to backlog phase. All assignees are removed from the Production phase."
+            logger.info(msg)
+            return Response({
+                'status': 'success',
+                'message': msg,
+                'data': {
+                    'project': {
+                        'title': project.title, 'description': project.description,
+                        'note': project.note, 'phase': project.phase.name,
+                        'phases': []
+                    }
+                }
+            })
+
+        if project.phase.name == 'Backlog' and not user_ids:
+            logger.warning("No users provided for assignment.")
+            return Response({'status': 'error', 'message': 'Add at least one user in the assign list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        elif project.phase.name == 'Backlog' and not project.fileattachment_set.exists():
+            logger.warning("No attachments found before assigning phase.")
+            return Response({'status': 'error', 'message': 'Add at least one attachment before assigning phase to a user'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        elif ((project.phase.name not in ['Backlog'] and
+                project.phase.name.title() == phase_to_assign.title()) or
+                (project.phase.name == 'Production' and user_ids)):
+            if phase_to_assign.upper() == 'QC':
+                phase_to_assign = 'QC'
+            # Handle if phase_to_assign is upper or lower phase but not Backlog
+            # then throw error that current phase has to be marked as completed
+            if project.phase.name.title() != phase_to_assign.title():
                 return Response(
                     {
                         'status': 'error',
-                        'message': f'Users with IDs {", ".join(missing_user_ids)} not found'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            elif phase_to_assign == 'Production' and not user_to_be_assigned:
-                previous_phase = PhaseAssignment.objects.filter(project=project, phase__name='Production')
-                previous_phase.delete()
-                backlog_phase = Phase.object.get(name='Backlog')
-                project.phase = backlog_phase
-                project.save()
-                msg = "Project Moved back to backlog phase. Since all assignees are removed from Production phase."
-                logger.info(msg)
-                return Respose(
-                    {
-                        'status': 'success',
-                        'message': msg,
-                        'detail': {
-                            'id': project.id,
-                            'title': project.title,
-                            'description': project.description,
-                            'note': project.note
-                        }
+                        'message': (
+                            'Project cannot be moved from one phase to another '
+                            'before current phase is marked as completed'
+                        )
                     }
                 )
+            # Update the Phase Assignment details instead of creating a new object
+            # For production we have to move the phase back to Backlog for a scenario
+            phase_assignment = PhaseAssignment.objects.get(project=project)
+            existing_assigned_users = [usr.id for usr in phase_assignment.assigned_to.all()]
+            if set(user_ids) != set(existing_assigned_users):
+                phase_assignment.assigned_to.set(user_ids)
+                phase_assignment.save()
 
-            elif project.phase.name == 'Backlog' and phase_to_assign.title() == 'Production' and user_queryset:
-                assign_phase = PhaseAssignment.objects.create(
-                    project=project, phase=Phase.objects.get(name='Production'), assigned_by=request.user,
-                    status='Open'
+                # add event in Project timeline
+                usernames = [usr.username for usr in User.objects.filter(id__in=set(user_ids))]
+                timeline = ProjectTimeline.objects.create(
+                    project=project, user=self.request.user,
+                    change_note=f"Assigned project Phase {project.phase.name} to user(s) {usernames}",
+                    status="update"
                 )
-                project.phase = Phase.objects.get(name='Production')
-                project.save()
-            elif project.phase.name == 'QC' and phase_to_assign.title() == 'QC':
-                assign_phase = PhaseAssignment.objects.create(
-                    project=project, phase=Phase.objects.get(name='QC'), assigned_by=request.user,
-                    status='Open'
+            assignment_detail = AssignmentDetail.objects.get(assignment=phase_assignment)
+            phase_note_and_date_event = False
+            if assignment_detail.note != phase_note:
+                phase_note_and_date_event = True
+                assignment_detail.note = phase_note
+                assignment_detail.save()
+            if (phase_end_date and
+                    assignment_detail.end_date != datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')):
+                
+                phase_note_and_date_event = True
+                assignment_detail.end_date =  datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
+                assignment_detail.save()
+            
+            # Update event in project timeline
+            if phase_note_and_date_event:
+                timeline = ProjectTimeline.objects.create(
+                    project=project, user=self.request.user,
+                    change_note=f"Updated assignment note & Phase End Date.",
+                    status="update"
                 )
-                project.phase = Phase.objects.get(name='QC')
-                project.save()
-            elif project.phase.name == 'Delivery' and phase_to_assign.title() == 'Delivery':
-                assign_phase = PhaseAssignment.objects.create(
-                    project=project, phase=Phase.objects.get(name='Delivery'), assigned_by=request.user,
-                    status='Open'
-                )
-                project.phase = Phase.objects.get(name='Delivery')
-                project.save()
-            # Assign Phase to user
-            assign_phase.assigned_to.set([user for user in user_queryset])
-            assign_phase.save()
-            # Add assignment details
-            assign_detail = AssignmentDetail.objects.create(
-                assignment=assign_phase, note=phase_note,
-            )
-            if phase_end_date:
-                assign_detail.end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
-                assign_detail.save()
-            logger.info(f"Save Project Phase assignment.")
-            assignee_names = ', '.join([usr.username for usr in user_queryset])
-            timeline = ProjectTimeline(
-                project=project, user=request.user,
-                change_note=f"Assigned project Phase {project.phase.name} to user {assignee_names}",
-                status="add"
-            )
-            timeline.save()
-            logger.info("Saved Timeline detail in db.")
             return Response({
-                'status': 'success', 'message': f'Assigned users [{assignee_names}] to project phase',
-                'detail': {
-                    'project': {'id': project.id, 'title': project.title,
-                        'phase': {
-                            'id': assign_phase.phase.id, 'name': assign_phase.phase.name,
-                            'assigned_by': assign_phase.assigned_by.username,
-                            'status': assign_phase.status,
-                            'assigned_date': assign_phase.assigned_date,
-                            'note': assign_detail.note,
-                            'phase_end_date': assign_detail.end_date,
-                            'assignees': [{'username': usr.username, 'id': usr.id} for usr in user_queryset]
-                        }
-                    }
-
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        else:
-            return Response({
-                'status': 'error',
-                'message': 'Invalid phase.'
+                'status': 'success', 'message': 'Succesffully updated Phase details',
+                'data': self.get_project_detail(project, phase_assignment, assignment_detail)
             })
+
+        elif phase_to_assign == 'Production' and not user_ids:
+            return move_to_backlog()
+
+        phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
+        return Response({
+            'status': 'success',
+            'message': f'Assigned users [{", ".join(user_ids)}] to project phase',
+            'data': project_detail
+        }, status=status.HTTP_200_OK)
+
+    def assign_phase_to_user(self, project, phase_to_assign, user_ids, phase_note, end_date):
+        if phase_to_assign.upper() == 'QC':
+            phase_to_assign = 'QC'
+        assign_phase = PhaseAssignment.objects.create(
+            project=project, phase=Phase.objects.get(name=phase_to_assign), assigned_by=self.request.user, status='Open'
+        )
+        project.phase = Phase.objects.get(name=phase_to_assign)
+        project.save()
+
+        # Assign Phase to user
+        assign_phase.assigned_to.set(user_ids)
+        assign_phase.save()
+
+        # Add assignment details
+        assign_detail = AssignmentDetail.objects.create(
+            assignment=assign_phase, note=phase_note, end_date=end_date
+        )
+
+        logger.info(f"Saved Project Phase assignment for project ID {project.id}.")
+
+        assignee_names = ', '.join([usr.username for usr in assign_phase.assigned_to.all()])
+        timeline = ProjectTimeline.objects.create(
+            project=project, user=self.request.user,
+            change_note=f"Assigned project Phase {project.phase.name} to user(s) {assignee_names}",
+            status="add"
+        )
+
+        logger.info(f"Saved Timeline detail in the database for project ID {project.id}.")
+
+        return assign_phase, self.get_project_detail(project, assign_phase, assign_detail)
+
+    def get_project_detail(self, project, assigned_phase, assign_detail={}):
+        return {
+            'project': {
+                'id': project.id,
+                'title': project.title,
+                'description': project.description,
+                'note': project.note,
+                'phase': {
+                    'id': assigned_phase.id,
+                    'name': project.phase.name,
+                    'assigned_by': assigned_phase.assigned_by.username,
+                    'status': assigned_phase.status,
+                    'assigned_date': assigned_phase.assigned_date,
+                    'note': assigned_phase.assignmentdetail_set.last().note,
+                    'phase_end_date': assigned_phase.assignmentdetail_set.last().end_date,
+                    'assignees': [{'username': usr.username, 'id': usr.id} for usr in assigned_phase.assigned_to.all()]
+                }
+            }
+        }
 
     def put(self, request, pk, phase_name):
         user_to_be_assigned = request.data.getlist('user_ids')
@@ -557,9 +615,9 @@ class AssignProjectPhaseView(APIView):
                 )
         except Exception as error:
             pass
+            
 
 
 
 
-
-
+        
