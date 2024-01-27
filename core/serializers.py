@@ -105,15 +105,20 @@ class TagSerializer(serializers.ModelSerializer):
 class AssignmentDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignmentDetail
-        fields = ('note', 'end_date', 'status', 'assigned_to')
+        fields = ('note', 'end_date')
 
 class PhaseAssignmentSerializer(serializers.ModelSerializer):
     assigned_to = UserSerializer(many=True)
-    assignment_details = AssignmentDetailSerializer(many=True)
+    assignment_details = serializers.SerializerMethodField()
 
     class Meta:
         model = PhaseAssignment
         fields = ('id', 'phase', 'assigned_date', 'assigned_by', 'status', 'assigned_to', 'assignment_details')
+    
+    def get_assignment_details(self, obj):
+        assignment_details = AssignmentDetail.objects.filter(assignment=obj)
+        detail_serializer = AssignmentDetailSerializer(assignment_details, many=True)
+        return detail_serializer.data
 
 
 class FileAttachmentSerializer(serializers.ModelSerializer):
@@ -156,3 +161,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     
     def get_phase(self, obj):
         return obj.phase.name
+
+
+class AssignProjectPhaseSerializer(serializers.Serializer):
+    users_id = serializers.ListField(child=serializers.IntegerField())

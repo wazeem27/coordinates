@@ -4,7 +4,8 @@ from core.views import (
     ProjectListView,
     ProjectAPIView,
     AddRemoveAttachmentAPIView,
-    FileUploadStatusAPIView
+    FileUploadStatusAPIView,
+    AssignProjectPhaseView
 )
 
 urlpatterns = [
@@ -20,4 +21,5 @@ urlpatterns = [
         'projects/<int:project_id>/attachments/<int:file_id>/upload-status/',
         FileUploadStatusAPIView.as_view(), name='file-upload-status'
     ),
+    path('projects/<int:pk>/phase/', AssignProjectPhaseView.as_view(), name='assign_phase'),
 ]
