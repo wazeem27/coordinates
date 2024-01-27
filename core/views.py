@@ -71,7 +71,7 @@ class ProjectAPIView(APIView):
         else:
             permission_classes = [IsAuthenticated]  # Default permission (e.g., for GET)
         return [permission() for permission in permission_classes]
-    
+
     def get(self, request, pk):
         try:
             project = Project.objects.get(pk=pk)
@@ -80,7 +80,7 @@ class ProjectAPIView(APIView):
                 {'status': 'error', 'message': 'Project not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         serializer = ProjectDetailSerializer(project)
         serialized_data = serializer.data
 
@@ -379,7 +379,9 @@ class AssignProjectPhaseView(APIView):
 
     def post(self, request, pk):
         project = get_object_or_404(Project, id=pk)
-        user_ids = list(set(request.data.getlist('user_ids', [])))
+        logger.error(request.data)
+        logger.info("-------------------------------------")
+        user_ids = list(set(request.data.get('user_ids', [])))
         phase_to_assign = request.data.get('phase_to_assign', '').title()
         phase_note = request.data.get('phase_note', '')
         phase_end_date = request.data.get('phase_end_date', '')
@@ -422,7 +424,7 @@ class AssignProjectPhaseView(APIView):
                     'message': message
                 }, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # handle phase cannot be moved from one to another except backlog
         if project.phase.name == 'Backlog' and phase_to_assign.title() != 'Production':
             return Response(
@@ -443,7 +445,7 @@ class AssignProjectPhaseView(APIView):
                     )
                 }, status=status.HTTP_400_BAD_REQUEST
             )
-            
+
 
         def move_to_backlog():
             previous_phase = PhaseAssignment.objects.filter(project=project, phase__name=phase_to_assign)
@@ -477,7 +479,7 @@ class AssignProjectPhaseView(APIView):
         elif project.phase.name == 'Backlog' and not project.fileattachment_set.exists():
             logger.warning("No attachments found before assigning phase.")
             return Response({'status': 'error', 'message': 'Add at least one attachment before assigning phase to a user'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         elif ((project.phase.name not in ['Backlog'] and
                 project.phase.name.title() == phase_to_assign.title()) or
                 (project.phase.name == 'Production' and user_ids)):
@@ -518,11 +520,11 @@ class AssignProjectPhaseView(APIView):
                 assignment_detail.save()
             if (phase_end_date and
                     assignment_detail.end_date != datetime.strptime(phase_end_date, '%Y-%m-%d').date()):
-                
+
                 phase_note_and_date_event = True
                 assignment_detail.end_date = datetime.strptime(phase_end_date, '%Y-%m-%d').date()
                 assignment_detail.save()
-            
+
             # Update event in project timeline
             if phase_note_and_date_event:
                 timeline = ProjectTimeline.objects.create(
@@ -539,9 +541,10 @@ class AssignProjectPhaseView(APIView):
             return move_to_backlog()
 
         phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
+        user_obj_ids = [str(i) for i in user_ids]
         return Response({
             'status': 'success',
-            'message': f'Assigned users [{", ".join(user_ids)}] to project phase',
+            'message': f'Assigned users [{", ".join(user_obj_ids)}] to project phase',
             'data': project_detail
         }, status=status.HTTP_200_OK)
 
@@ -618,9 +621,9 @@ class AssignProjectPhaseView(APIView):
                 )
         except Exception as error:
             pass
-            
 
 
 
 
-        
+
+
