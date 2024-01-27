@@ -427,3 +427,52 @@ class UserDashboardView(APIView):
             }
 
         return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
+
+
+class UserDetailView(APIView):
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request, pk):
+        try:
+            user_obj = User.objects.get(id=pk)
+        except Exception as error:
+            logger.error(f"User with ID {pk} not found")
+            return Response(
+                {
+                    'status': 'error',
+                    'message': f'User with ID {pk} not found.'
+                }, status=status.HTTP_404_NOT_FOUND
+            )
+        groups = request.user.groups.values_list('name', flat=True)
+        role = ''
+        usr_involved_proj = []
+        if request.user.is_superuser:
+            role = 'superuser'
+            projects_timelines = ProjectTimeline.objects.all().order_by('-date_time')
+            for timeline in projects_timelines:
+                if len(usr_involved_proj) == 5:
+                    break
+                elif timeline.project not in usr_involved_proj:
+                    usr_involved_proj.append(timeline.project)
+
+
+        elif groups:
+            role = groups[0].split(' ')[0].lower()
+            projects_timelines = ProjectTimeline.objects.all().order_by('-date_time')
+            for timeline in projects_timelines:
+                if len(usr_involved_proj) == 5:
+                    break
+                elif timeline.project not in usr_involved_proj:
+                    usr_involved_proj.append(timeline.project)
+        data = {
+            'id': user_obj.id,
+            'username': user_obj.username,
+            'first_name': user_obj.first_name,
+            'last_name': user_obj.last_name,
+            'email': user_obj.email,
+            'role': role,
+            'recentprojects': [
+                {'id': proj.id, 'title': proj.title, 'current_phase': proj.phase.name} for proj in usr_involved_proj
+            ]
+        }
+        return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
