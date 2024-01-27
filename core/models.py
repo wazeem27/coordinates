@@ -10,7 +10,7 @@ class Phase(models.Model):
         ("Backlog", "Backlog"),
         ("Production", "Production"),
         ("QC", "QC"),
-        ("Validating", "Validating"),
+        ("Delivery", "Delivery"),
         ("Completed", "Completed")
     )
     name = models.CharField(max_length=30, choices=PHASE_CHOICES, unique=True)
