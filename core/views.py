@@ -71,7 +71,7 @@ class ProjectAPIView(APIView):
         else:
             permission_classes = [IsAuthenticated]  # Default permission (e.g., for GET)
         return [permission() for permission in permission_classes]
-    
+
     def get(self, request, pk):
         try:
             project = Project.objects.get(pk=pk)
@@ -80,7 +80,7 @@ class ProjectAPIView(APIView):
                 {'status': 'error', 'message': 'Project not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         serializer = ProjectDetailSerializer(project)
         serialized_data = serializer.data
 
@@ -386,7 +386,7 @@ class AssignProjectPhaseView(APIView):
                 {
                     'status': 'error',
                     'message': 'Project Not found'
-                }, status=status.HTTP_404_NOT_FOUND 
+                }, status=status.HTTP_404_NOT_FOUND
             )
         user_to_be_assigned = request.data.getlist('user_ids')
         phase_to_assign = request.data.get('phase_to_assign')
@@ -399,7 +399,8 @@ class AssignProjectPhaseView(APIView):
         logger.info(f"Phase end date is {phase_end_date}")
         try:
             # process end date to check validtity
-            end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
+            if phase_end_date:
+                end_date = datetime.strptime(phase_end_date, '%b %d %Y %I:%M%p')
         except Exception as error:
             return Response(
                 {
@@ -407,7 +408,7 @@ class AssignProjectPhaseView(APIView):
                     'message': f'Invalid End Date time give {phase_end_date}'
                 }, status=status.HTTP_404_NOT_FOUND
             )
-        
+
 
         # base case if current phase is backlog and users list is [] (empty) throw error
         if project.phase.name =='Backlog' and not user_to_be_assigned:
@@ -416,6 +417,12 @@ class AssignProjectPhaseView(APIView):
                     'status': 'error', 'message': 'Add atleast one user in assign list.'
                 }, status=status.HTTP_400_BAD_REQUEST
             )
+        elif project.phase.name and phase_to_assign.title():
+            return Response(
+                    {'status': 'error', 'message': 'Current project Phase is same as that your are trying to move.'},
+                    status=status.HTTP_400_BAD_REQUEST
+
+                )
         elif project.phase.name =='Backlog' and not FileAttachment.objects.filter(project=project):
             return Response(
                 {
@@ -463,7 +470,7 @@ class AssignProjectPhaseView(APIView):
                         }
                     }
                 )
-            
+
             elif project.phase.name == 'Backlog' and phase_to_assign.title() == 'Production' and user_queryset:
                 assign_phase = PhaseAssignment.objects.create(
                     project=project, phase=Phase.objects.get(name='Production'), assigned_by=request.user,
@@ -521,7 +528,7 @@ class AssignProjectPhaseView(APIView):
 
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         else:
             return Response({
                 'status': 'error',
@@ -550,9 +557,9 @@ class AssignProjectPhaseView(APIView):
                 )
         except Exception as error:
             pass
-            
 
 
 
 
-        
+
+
