@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-_0t*!(i9z_)%^#o)clw0kf!yutz@7019ddcfuqa$9s_1a^h515
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['bellatrix1.pythonanywhere.com']
 
 
 # Application definition
@@ -157,11 +157,11 @@ CORS_ALLOW_ALL_ORIGINS = True
 # ]
 
 # AWS DETAILS
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_ACCESS_KEY_ID = "AKIAQ5CW5ZPJSQHVUGXK"
+AWS_SECRET_ACCESS_KEY = "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"
+AWS_STORAGE_BUCKET_NAME = "coordinatesprojectfiles"
 
-AWS_S3_FILE_OVERWRITE = True
+AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'

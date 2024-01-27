@@ -12,6 +12,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.views import PasswordResetView
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
+from core.models import ProjectTimeline, PhaseAssignment, Project, Phase
 
 import logging
 
@@ -232,7 +233,7 @@ class UserUpdateView(UpdateAPIView):
     def update(self, request, *args, **kwargs):
         try:
             user_instance = self.get_object()
-            
+
             if request.user.is_superuser or request.user == user_instance:
                 message = ""
                 serializer_class = self.get_serializer_class()
@@ -381,3 +382,48 @@ class UserReactivateView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class UserProfileView(APIView):
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):
+        groups = request.user.groups.values_list('name', flat=True)
+        role = ''
+        if request.user.is_superuser:
+            role = 'superuser'
+        elif groups:
+            role = groups[0].split(' ')[0].lower()
+        data = {
+            'id': request.user.id,
+            'username': request.user.username,
+            'first_name': request.user.first_name,
+            'last_name': request.user.last_name,
+            'email': request.user.email,
+            'role': role
+            }
+        return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
+
+class UserDashboardView(APIView):
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):
+        if request.user.is_superuser:
+            data = {
+                'backlog': Phase.objects.get(name='Backlog').project_set.all().count(),
+                'production': Phase.objects.get(name='Production').project_set.all().count(),
+                'qc': Phase.objects.get(name='QC').project_set.all().count(),
+                'delivery': Phase.objects.get(name='Validating').project_set.all().count(),
+                'completed': Phase.objects.get(name='Completed').project_set.all().count()
+            }
+        else:
+            data = {
+                'backlog': Phase.objects.get(name='Backlog').project_set.all().count(),
+                'production': Phase.objects.get(name='Production').project_set.all().count(),
+                'qc': Phase.objects.get(name='QC').project_set.all().count(),
+                'delivery': Phase.objects.get(name='Validating').project_set.all().count(),
+                'completed': Phase.objects.get(name='Completed').project_set.all().count()
+
+            }
+
+        return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
