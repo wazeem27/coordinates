@@ -411,12 +411,15 @@ class AssignProjectPhaseView(APIView):
             return Response({'status': 'error', 'message': 'Invalid phase'}, status=status.HTTP_400_BAD_REQUEST)
 
         elif phase_to_assign.title() == 'Backlog':
+            message = (
+                "A Project phase can only move from Production to Backlog. To do that "
+                "* Delete all the attachment in production phase. * Move Production "
+                "phase back to Open status and Unassign all user from assignee list."
+            )
             return Response(
                 {
                     'status': 'error',
-                    'message': (
-                        'You are trying to move Project Phase from Backlog to Backlog '
-                        'which is Invalid.')
+                    'message': message
                 }, status=status.HTTP_400_BAD_REQUEST
             )
         
