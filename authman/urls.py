@@ -18,7 +18,7 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('dashboard/', UserDashboardView.as_view(), name='dashboard'),
     # admin view only
-    path('profile/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
+    path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     # Django's built-in password reset URLs
     # path('api/password-reset/', include('django.contrib.auth.urls')),
 ]

@@ -15,11 +15,11 @@ from rest_framework.generics import RetrieveAPIView
 from core.models import Project, ProjectTimeline, FileAttachment, Phase, Tag
 from core.serializers import (
     ProjectSerializer, ProjectListSerializer, ProjectDetailSerializer)
-from core.models import PhaseAssignment, PhaseStatus, AssignmentDetail
+from core.models import PhaseAssignment, PhaseStatus, AssignmentDetail, PhaseStatus
 from coordinates import settings
 from core.utils import (
     handle_uploaded_file, initiate_s3_multipart_upload, upload_s3_multipart_part,
-    complete_s3_multipart_upload, delete_s3_file
+    complete_s3_multipart_upload, delete_s3_file, get_project_detail
 )
 
 import logging
@@ -80,11 +80,9 @@ class ProjectAPIView(APIView):
                 {'status': 'error', 'message': 'Project not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        serializer = ProjectDetailSerializer(project)
-        serialized_data = serializer.data
-
-        return Response(serialized_data, status=status.HTTP_200_OK)
+        
+        project_detail = get_project_detail(project)
+        return Response({"data": project_detail}, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
         try:
@@ -599,31 +597,33 @@ class AssignProjectPhaseView(APIView):
             }
         }
 
-    def put(self, request, pk, phase_name):
-        user_to_be_assigned = request.data.getlist('user_ids')
-        project = Project.objects.get(id=pk)
-        try:
-            if phase_name.lower() not in ['production', 'qc', 'delivery']:
-                pass
-            elif phase_name.lower() == 'completed':
-                return Response(
-                    {
-                        'status': 'error',
-                        'message': 'Cannot update completed Project Phase.'
-                    }, status=status.HTTP_400_BAD_REQUEST
-                )
-            elif phase_name.lower() == 'backlog':
-                return Response(
-                    {
-                        'status': 'error',
-                        'message': 'Phase details can be updated only when its moved to Production or higher phase.'
-                    }, status=status.HTTP_400_BAD_REQUEST
-                )
-        except Exception as error:
-            pass
+
+# class PhaseStatusView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request, project_id, phase_id):
+#         try:
+#             project = Project.objects.get(id=project_id)
+#         except Project.DoesNotExist:
+#             return Response(
+#                 {'status': 'error', 'message': 'Project not found'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#         try:
+#             phase_assignments = PhaseAssignment.objects.filter(project=project)
+#         except Exception as error:
+#             logger.error("Error while fetching phase_assignments details from DB.")
+#             return Response(
+#                 {
+#                     'status': 'error', 'message': 'Something went wrong! Contact your Admin!'
+#                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )
+#         details = []
+#         for assgnt in phase_assignments:
+#             phase_status = PhaseStatus.objects.get(phase=assgnt.phase)
+            
 
 
 
 
-
-
+ 
