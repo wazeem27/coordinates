@@ -624,6 +624,93 @@ class AssignProjectPhaseView(APIView):
             
 
 
+class PhaseStatusUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
 
-
- 
+    def post(self, request, pk, phase_status):
+        try:
+            project = Project.objects.get(id=pk)
+        except Exception as error:
+            return Response(
+                {"status": "error", "message": "Project not found!"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        try:
+            status_obj = PhaseStatus.objects.get(project=project.id)
+            assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
+            if assgnment.status.lower() != phase_status:
+                if phase_status.strip().lower() == 'open' and assgnment.status == 'In-Progress':
+                    assgnment.status = 'Open'
+                    assgnment.save()
+                elif phase_status.strip().lower() == 'in-progress' and assgnment.status != 'In-Progress':
+                    assgnment.status = 'In-Progress'
+                    assgnment.save()
+                    if assgnment.status == 'Done':
+                        status_obj.is_completed = False
+                        status_obj.end_date = None
+                        status_obj.save()
+                elif phase_status.strip().lower() == 'done' and assgnment.status == 'In-Progress':
+                    assgnment.status = 'Done'
+                    assgnment.save()
+                    status_obj.is_completed = True
+                    status_obj.end_date = datetime.now()
+                    status_obj.save()
+                    
+                    if project.phase.name == 'Production':
+                        project.phase = Phase.objects.get(name='QC')
+                        project.save()
+                    elif project.phase.name == 'QC':
+                        project.phase = Phase.objects.get(name='Delivery')
+                        project.save()
+                    elif project.phase.name == 'Delivery':
+                        project.phase = Phase.objects.get(name='Completed')
+                        project.save()
+                else:
+                    return Response(
+                        {
+                            'status': 'error',
+                            'message': 'Phase status order is Open <-> In-Progress <-> Done'
+                        }
+                    )
+                return Response(
+                    {'status': 'success', 'data': get_project_detail(project)},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response({'status': 'error', 'message': 'Phase already in Same status.'})
+        except Exception as error:
+            assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
+            if not assgnment:
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "Assign the Phase to someone in-order to start the work."
+                    }, status=statu.HTTP_400_BAD_REQUEST
+                )
+            if project.phase.id == 1:
+                return Response(
+                    {"status": "error", "message": "Backlog phase has no status."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if phase_status.strip().lower() == 'in-progress':
+                status_obj = PhaseStatus.objects.create(
+                    project=project, phase=project.phase,
+                    start_date=datetime.now(), 
+                )
+                status_obj.save()
+                assgnment.status = 'In-Progress'
+                assgnment.save()
+                return Response(
+                    {'status': "success", 'data': get_project_detail(project)},
+                    status=status.HTTP_200_OK
+                )
+            elif phase_status.strip().lower() == 'open':
+                return Response({'status': 'error', 'message': 'Phase is already in Open state.'})
+            elif phase_status.strip().lower() == 'done':
+                return Response({'status': 'error', 'message': 'Move the phase first to inprogress state.'})
+            else:
+                return Response(
+                    {'status': 'error', 'message': 'Invalid Phase status given.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
