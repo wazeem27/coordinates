@@ -256,7 +256,11 @@ class AddRemoveAttachmentAPIView(APIView):
                 {
                     "status": "success",
                     "message": message,
-                    "attachment": {"id": attachment_instance.id, "file_name": file_path}
+                    "attachment": {
+                        "id": attachment_instance.id, "file_name": file_path,
+                        "tag": tag.name, "uploaded_by": request.user.username,
+                        "uploaded_at": attachment_instance.create_time
+                    }
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -378,7 +382,6 @@ class AssignProjectPhaseView(APIView):
     def post(self, request, pk):
         project = get_object_or_404(Project, id=pk)
         logger.error(request.data)
-        logger.info("-------------------------------------")
         user_ids = list(set(request.data.get('user_ids', [])))
         phase_to_assign = request.data.get('phase_to_assign', '').title()
         phase_note = request.data.get('phase_note', '')
@@ -621,7 +624,6 @@ class AssignProjectPhaseView(APIView):
 #         details = []
 #         for assgnt in phase_assignments:
 #             phase_status = PhaseStatus.objects.get(phase=assgnt.phase)
-            
 
 
 class PhaseStatusUpdateView(APIView):
@@ -713,4 +715,3 @@ class PhaseStatusUpdateView(APIView):
                     {'status': 'error', 'message': 'Invalid Phase status given.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-                

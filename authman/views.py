@@ -13,7 +13,7 @@ from django.contrib.auth.views import PasswordResetView
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from core.models import ProjectTimeline, PhaseAssignment, Project, Phase
-
+from datetime import datetime, timedelta
 import logging
 
 from .serializers import (
@@ -407,13 +407,27 @@ class UserProfileView(APIView):
 class UserDashboardView(APIView):
     authentication_classes = [TokenAuthentication]
 
+    def get_last_week_data(self, phase_name):
+        last_week_start = datetime.now() - timedelta(days=7)
+        last_week_end = datetime.now()
+
+        projects_last_week = (
+            Project.objects.filter(
+                phase__name=phase_name,
+                create_time__gte=last_week_start,
+                create_time__lt=last_week_end
+            ).count()
+        )
+        return projects_last_week
+
     def get(self, request):
+        phases = ['Backlog', 'Production', 'QC', 'Delivery', 'Completed']
         if request.user.is_superuser:
             data = {
                 'backlog': Phase.objects.get(name='Backlog').project_set.all().count(),
                 'production': Phase.objects.get(name='Production').project_set.all().count(),
                 'qc': Phase.objects.get(name='QC').project_set.all().count(),
-                'delivery': Phase.objects.get(name='Validating').project_set.all().count(),
+                'delivery': Phase.objects.get(name='Delivery').project_set.all().count(),
                 'completed': Phase.objects.get(name='Completed').project_set.all().count()
             }
         else:
@@ -421,11 +435,20 @@ class UserDashboardView(APIView):
                 'backlog': Phase.objects.get(name='Backlog').project_set.all().count(),
                 'production': Phase.objects.get(name='Production').project_set.all().count(),
                 'qc': Phase.objects.get(name='QC').project_set.all().count(),
-                'delivery': Phase.objects.get(name='Validating').project_set.all().count(),
+                'delivery': Phase.objects.get(name='Delivery').project_set.all().count(),
                 'completed': Phase.objects.get(name='Completed').project_set.all().count()
 
             }
+        for phase_name in phases:
+            current_count = Phase.objects.get(name=phase_name).project_set.all().count()
+            last_week_count = self.get_last_week_data(phase_name)
 
+            # Calculate percentage change
+            if last_week_count == 0:
+                percentage_change = 100 if current_count > 0 else 0
+            else:
+                percentage_change = ((current_count - last_week_count) / last_week_count) * 100
+            data[phase_name.lower()+"_%"] = percentage_change
         return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
 
 
