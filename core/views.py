@@ -639,7 +639,15 @@ class PhaseStatusUpdateView(APIView):
             )
         try:
             status_obj = PhaseStatus.objects.get(project=project.id)
-            assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
+            try:
+                assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
+            except Exception as error:
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "Assign the phase to someone first in-order to start the work"
+                    }
+                )
             if assgnment.status.lower() != phase_status:
                 if phase_status.strip().lower() == 'open' and assgnment.status == 'In-Progress':
                     assgnment.status = 'Open'
