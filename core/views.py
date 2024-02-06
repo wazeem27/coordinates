@@ -380,6 +380,7 @@ class AssignProjectPhaseView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        
         project = get_object_or_404(Project, id=pk)
         logger.error(request.data)
         user_ids = list(set(request.data.get('user_ids', [])))
@@ -409,7 +410,7 @@ class AssignProjectPhaseView(APIView):
             return Response({'status': 'error', 'message': 'Invalid End Date time'}, status=status.HTTP_400_BAD_REQUEST)
 
         valid_phase_names = [choice[0].title() for choice in Phase.PHASE_CHOICES]
-        if phase_to_assign not in valid_phase_names:
+        if phase_to_assign.title() not in valid_phase_names:
             logger.error(f"Invalid phase: {phase_to_assign}")
             return Response({'status': 'error', 'message': 'Invalid phase'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -432,21 +433,10 @@ class AssignProjectPhaseView(APIView):
                 {
                     'status': 'error',
                     'message': (
-                        'You are tryng to move Project phase form backlog to QC '
+                        'You are tryng to move Project phase form backlog to above Production '
                         'which is not allowed')
                 }, status=status.HTTP_400_BAD_REQUEST
             )
-        if project.phase.name != 'Backlog' and project.phase.name.title() != phase_to_assign.title():
-            return Response(
-                {
-                    'status': 'error',
-                    'message': (
-                        'Project cannot be moved from one phase to another '
-                        'before current phase is marked as completed'
-                    )
-                }, status=status.HTTP_400_BAD_REQUEST
-            )
-
 
         def move_to_backlog():
             previous_phase = PhaseAssignment.objects.filter(project=project, phase__name=phase_to_assign)
@@ -472,82 +462,80 @@ class AssignProjectPhaseView(APIView):
                     }
                 }
             })
-
-        if project.phase.name == 'Backlog' and not user_ids:
-            logger.warning("No users provided for assignment.")
-            return Response({'status': 'error', 'message': 'Add at least one user in the assign list.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if project.phase.name != 'Backlog' and project.phase.name.title() != phase_to_assign.title():
+            return Response(
+                {
+                    'status': 'error',
+                    'message': (
+                        'Project cannot be moved from one phase to another '
+                        'before current phase is marked as completed'
+                    )
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
 
         elif project.phase.name == 'Backlog' and not project.fileattachment_set.exists():
             logger.warning("No attachments found before assigning phase.")
-            return Response({'status': 'error', 'message': 'Add at least one attachment before assigning phase to a user'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'error', 'message': 'Add at least one attachment before assigning phase to a user.'}, status=status.HTTP_400_BAD_REQUEST)
 
         elif ((project.phase.name not in ['Backlog'] and
-                project.phase.name.title() == phase_to_assign.title()) or
-                (project.phase.name == 'Production' and user_ids)):
+                project.phase.name.title() == phase_to_assign.title())):
             if phase_to_assign.upper() == 'QC':
                 phase_to_assign = 'QC'
-            # Handle if phase_to_assign is upper or lower phase but not Backlog
-            # then throw error that current phase has to be marked as completed
-            if project.phase.name.title() != phase_to_assign.title():
-                return Response(
-                    {
-                        'status': 'error',
-                        'message': (
-                            'Project cannot be moved from one phase to another '
-                            'before current phase is marked as completed'
-                        )
-                    }
+            try:
+                # try finding the existing phase assignment
+                PhaseAssignment.objects.get(project=project, phase=Phase.objects.get(name=phase_to_assign))
+                # Update the Phase Assignment details instead of creating a new object
+                # For production we have to move the phase back to Backlog for a scenario
+                phase_assignment = PhaseAssignment.objects.get(project=project)
+                existing_assigned_users = [usr.id for usr in phase_assignment.assigned_to.all()]
+                if set(user_ids) != set(existing_assigned_users):
+                    phase_assignment.assigned_to.set(user_ids)
+                    phase_assignment.save()
+
+                    # add event in Project timeline
+                    usernames = [usr.username for usr in User.objects.filter(id__in=set(user_ids))]
+                    timeline = ProjectTimeline.objects.create(
+                        project=project, user=self.request.user,
+                        change_note=f"Assigned project Phase {project.phase.name} to user(s) {usernames}",
+                        status="update"
+                    )
+                assignment_detail = AssignmentDetail.objects.get(assignment=phase_assignment)
+                phase_note_and_date_event = False
+                if assignment_detail.note != phase_note:
+                    phase_note_and_date_event = True
+                    assignment_detail.note = phase_note
+                    assignment_detail.save()
+                if (phase_end_date and
+                        assignment_detail.end_date != datetime.strptime(phase_end_date, '%Y-%m-%d').date()):
+
+                    phase_note_and_date_event = True
+                    assignment_detail.end_date = datetime.strptime(phase_end_date, '%Y-%m-%d').date()
+                    assignment_detail.save()
+
+                # Update event in project timeline
+                if phase_note_and_date_event:
+                    timeline = ProjectTimeline.objects.create(
+                        project=project, user=self.request.user,
+                        change_note=f"Updated assignment note & Phase End Date.",
+                        status="update"
+                    )
+                return Response({
+                    'status': 'success', 'message': 'Succesffully updated Phase details',
+                    'data': self.get_project_detail(project, phase_assignment, assignment_detail)
+                })
+            except Exception as error:
+                logger.info("No Existing phase assignment found trying to create new one.")
+                phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
+                user_obj_ids = [str(i) for i in user_ids]
+                return Response({
+                    'status': 'success',
+                    'message': f'Assigned users [{", ".join(user_obj_ids)}] to project phase',
+                    'data': project_detail
+                    }, status=status.HTTP_200_OK
                 )
-            # Update the Phase Assignment details instead of creating a new object
-            # For production we have to move the phase back to Backlog for a scenario
-            phase_assignment = PhaseAssignment.objects.get(project=project)
-            existing_assigned_users = [usr.id for usr in phase_assignment.assigned_to.all()]
-            if set(user_ids) != set(existing_assigned_users):
-                phase_assignment.assigned_to.set(user_ids)
-                phase_assignment.save()
-
-                # add event in Project timeline
-                usernames = [usr.username for usr in User.objects.filter(id__in=set(user_ids))]
-                timeline = ProjectTimeline.objects.create(
-                    project=project, user=self.request.user,
-                    change_note=f"Assigned project Phase {project.phase.name} to user(s) {usernames}",
-                    status="update"
-                )
-            assignment_detail = AssignmentDetail.objects.get(assignment=phase_assignment)
-            phase_note_and_date_event = False
-            if assignment_detail.note != phase_note:
-                phase_note_and_date_event = True
-                assignment_detail.note = phase_note
-                assignment_detail.save()
-            if (phase_end_date and
-                    assignment_detail.end_date != datetime.strptime(phase_end_date, '%Y-%m-%d').date()):
-
-                phase_note_and_date_event = True
-                assignment_detail.end_date = datetime.strptime(phase_end_date, '%Y-%m-%d').date()
-                assignment_detail.save()
-
-            # Update event in project timeline
-            if phase_note_and_date_event:
-                timeline = ProjectTimeline.objects.create(
-                    project=project, user=self.request.user,
-                    change_note=f"Updated assignment note & Phase End Date.",
-                    status="update"
-                )
-            return Response({
-                'status': 'success', 'message': 'Succesffully updated Phase details',
-                'data': self.get_project_detail(project, phase_assignment, assignment_detail)
-            })
-
-        elif phase_to_assign == 'Production' and not user_ids:
-            return move_to_backlog()
-
-        phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
-        user_obj_ids = [str(i) for i in user_ids]
-        return Response({
-            'status': 'success',
-            'message': f'Assigned users [{", ".join(user_obj_ids)}] to project phase',
-            'data': project_detail
-        }, status=status.HTTP_200_OK)
+        # elif phase_to_assign == 'Production' and not user_ids:
+        #     return move_to_backlog()
 
     def assign_phase_to_user(self, project, phase_to_assign, user_ids, phase_note, end_date):
         if phase_to_assign.upper() == 'QC':
@@ -638,34 +626,42 @@ class PhaseStatusUpdateView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         try:
-            status_obj = PhaseStatus.objects.get(project=project.id)
-            try:
-                assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
-            except Exception as error:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Assign the phase to someone first in-order to start the work"
-                    }
-                )
+            assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
+        except Exception as error:
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Assign the phase to someone first in-order to start the work"
+                }
+            )
+        try:
             if assgnment.status.lower() != phase_status:
-                if phase_status.strip().lower() == 'open' and assgnment.status == 'In-Progress':
-                    assgnment.status = 'Open'
-                    assgnment.save()
-                elif phase_status.strip().lower() == 'in-progress' and assgnment.status != 'In-Progress':
+                # for invalid phase status
+                if phase_status.lower() not in ['open', 'in-progress', 'done']:
+                    return Response(
+                        {'status': 'error', 'message': 'Invalid Phase'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            
+                if phase_status.strip().lower() != 'done' and assgnment.status == 'Done':
+                    return Response(
+                        {"status": "error", "message": "Cannot change a completed phase status."}
+                    )
+                elif phase_status.strip().lower() == "in-progress" and assgnment.status == 'Open':
                     assgnment.status = 'In-Progress'
                     assgnment.save()
-                    if assgnment.status == 'Done':
-                        status_obj.is_completed = False
-                        status_obj.end_date = None
-                        status_obj.save()
+                    status_obj = PhaseStatus.objects.create(
+                        project=project, phase=project.phase,
+                        start_date=datetime.now())
+                    status_obj.save()
                 elif phase_status.strip().lower() == 'done' and assgnment.status == 'In-Progress':
                     assgnment.status = 'Done'
                     assgnment.save()
+                    status_obj = PhaseStatus.objects.get(project=project.id, phase=project.phase.id)
                     status_obj.is_completed = True
                     status_obj.end_date = datetime.now()
                     status_obj.save()
-                    
+                        
                     if project.phase.name == 'Production':
                         project.phase = Phase.objects.get(name='QC')
                         project.save()
@@ -688,38 +684,9 @@ class PhaseStatusUpdateView(APIView):
                 )
             else:
                 return Response({'status': 'error', 'message': 'Phase already in Same status.'})
-        except Exception as error:
-            assgnment = PhaseAssignment.objects.get(project=project.id, phase=project.phase.id)
-            if not assgnment:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Assign the Phase to someone in-order to start the work."
-                    }, status=statu.HTTP_400_BAD_REQUEST
-                )
-            if project.phase.id == 1:
-                return Response(
-                    {"status": "error", "message": "Backlog phase has no status."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            if phase_status.strip().lower() == 'in-progress':
-                status_obj = PhaseStatus.objects.create(
-                    project=project, phase=project.phase,
-                    start_date=datetime.now(), 
-                )
-                status_obj.save()
-                assgnment.status = 'In-Progress'
-                assgnment.save()
-                return Response(
-                    {'status': "success", 'data': get_project_detail(project)},
-                    status=status.HTTP_200_OK
-                )
-            elif phase_status.strip().lower() == 'open':
-                return Response({'status': 'error', 'message': 'Phase is already in Open state.'})
-            elif phase_status.strip().lower() == 'done':
-                return Response({'status': 'error', 'message': 'Move the phase first to inprogress state.'})
-            else:
-                return Response(
-                    {'status': 'error', 'message': 'Invalid Phase status given.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        except Exception as e:
+            # Add logging here to log the exception for debugging
+            return Response(
+                {'status': 'error', 'message': 'An error occurred while updating phase status'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -111,12 +111,17 @@ def get_project_detail(project):
             }
             data["phases"].append(phase_assgt_dict)
             try:
-                status_details = PhaseStatus.objects.get(phase=phase_assgt.phase.id)
+                status_details = PhaseStatus.objects.get(project=project, phase=phase_assgt.phase.id)
                 phase_assgt_dict["phase_status_detail"]["start_date"] = status_details.start_date
                 phase_assgt_dict["phase_status_detail"]["end_date"] = status_details.end_date
                 phase_assgt_dict["phase_status_detail"]["is_completed"] = status_details.is_completed
             except Exception as error:
                 continue
+        if project.phase.name not in ["Backlog", "Completed"]:
+            if project.phase.name not in [detail['phase'] for detail in data["phases"]]:
+                data["phases"].append(
+                    {"id": 78, "phase": project.phase.name, "status": "Open", "assignees": []}
+                )
         return data
     except Exception as error:
         print(error)
