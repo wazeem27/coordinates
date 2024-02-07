@@ -164,7 +164,7 @@ class ProjectAPIView(APIView):
         return Response({
             'status': 'success',
             'message':'Project deleted successfully'},
-            status=status.HTTP_204_NO_CONTENT
+            status=status.HTTP_200_OK
         )
 
     @staticmethod
@@ -534,7 +534,16 @@ class AssignProjectPhaseView(APIView):
                     'data': project_detail
                     }, status=status.HTTP_200_OK
                 )
-        # elif phase_to_assign == 'Production' and not user_ids:
+        elif phase_to_assign == 'Production' and project.phase.name == "Backlog":
+            phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
+            user_obj_ids = [str(i) for i in user_ids]
+            return Response({
+                'status': 'success',
+                'message': f'Assigned users [{", ".join(user_obj_ids)}] to project phase',
+                'data': project_detail
+                }, status=status.HTTP_200_OK
+            )
+
         #     return move_to_backlog()
 
     def assign_phase_to_user(self, project, phase_to_assign, user_ids, phase_note, end_date):
