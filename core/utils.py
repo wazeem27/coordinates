@@ -120,7 +120,12 @@ def get_project_detail(project):
         if project.phase.name not in ["Backlog", "Completed"]:
             if project.phase.name not in [detail['phase'] for detail in data["phases"]]:
                 data["phases"].append(
-                    {"id": 78, "phase": project.phase.name, "status": "Open", "assignees": []}
+                    {
+                        "id": 78, "phase": project.phase.name, "status": "Open", "assignees": [],
+                        "phase_status_detail":{
+                            "start_date":"","end_date":"","is_completed":False
+                        }
+                    }
                 )
         return data
     except Exception as error:
