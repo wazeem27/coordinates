@@ -679,6 +679,7 @@ class PhaseStatusUpdateView(APIView):
                         project.save()
                     elif project.phase.name == 'Delivery':
                         project.phase = Phase.objects.get(name='Completed')
+                        project.completion_date = datetime.now()
                         project.save()
                 else:
                     return Response(

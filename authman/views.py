@@ -448,7 +448,7 @@ class UserDashboardView(APIView):
                 percentage_change = 100 if current_count > 0 else 0
             else:
                 percentage_change = ((current_count - last_week_count) / last_week_count) * 100
-            data["rate_of_change_"+phase_name.lower()] = percentage_change
+            data["rate_of_change_"+phase_name.lower()] = round(percentage_change, 2)
         return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
 
 
