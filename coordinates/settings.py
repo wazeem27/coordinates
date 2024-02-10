@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-_0t*!(i9z_)%^#o)clw0kf!yutz@7019ddcfuqa$9s_1a^h515'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['bellatrix1.pythonanywhere.com']
+ALLOWED_HOSTS = ['65.0.173.137']
 
 
 # Application definition
@@ -165,3 +165,32 @@ AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Specify which HTTP headers are allowed in cross-origin requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Specify which HTTP methods are allowed in cross-origin requests
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Set the maximum allowed size for uploaded files (in bytes).
+FILE_UPLOAD_MAX_SIZE = 3 * 1024 * 1024 * 1024  # 3 GB

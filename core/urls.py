@@ -10,18 +10,18 @@ from core.views import (
 )
 
 urlpatterns = [
-    path('projects/create/', ProjectCreateAPIView.as_view(), name='create-project'),
-    path('projects/', ProjectListView.as_view(), name='projects'),
-    path('projects/<int:pk>/', ProjectAPIView.as_view(), name='project'),
-    path('projects/<int:project_id>/attachments/', AddRemoveAttachmentAPIView.as_view(), name='add-attachments'),
+    path('api/projects/create/', ProjectCreateAPIView.as_view(), name='create-project'),
+    path('api/projects/', ProjectListView.as_view(), name='projects'),
+    path('api/projects/<int:pk>/', ProjectAPIView.as_view(), name='project'),
+    path('api/projects/<int:project_id>/attachments/', AddRemoveAttachmentAPIView.as_view(), name='add-attachments'),
     path(
-        'projects/<int:project_id>/attachments/<str:file_id>/',
+        'api/projects/<int:project_id>/attachments/<str:file_id>/',
         AddRemoveAttachmentAPIView.as_view(), name='delete-attachments'
     ),
     path(
-        'projects/<int:project_id>/attachments/<int:file_id>/upload-status/',
+        'api/projects/<int:project_id>/attachments/<int:file_id>/upload-status/',
         FileUploadStatusAPIView.as_view(), name='file-upload-status'
     ),
-    path('projects/<int:pk>/phase/', AssignProjectPhaseView.as_view(), name='assign_phase'),
-    path('projects/<int:pk>/<str:phase_status>/', PhaseStatusUpdateView.as_view(), name='update-phase-status'),
+    path('api/projects/<int:pk>/phase/', AssignProjectPhaseView.as_view(), name='assign_phase'),
+    path('api/projects/<int:pk>/<str:phase_status>/', PhaseStatusUpdateView.as_view(), name='update-phase-status'),
 ]

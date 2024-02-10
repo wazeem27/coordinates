@@ -224,9 +224,16 @@ class AddRemoveAttachmentAPIView(APIView):
 
             # Uploading file parts to S3
             upload_parts = []
-            for part_number, part_data in enumerate(file.chunks(), start=1):
-                part_etag = upload_s3_multipart_part(file_path, upload_id, part_number, part_data)
+            part_number = 1
+            while True:
+                chunk = file.read(5 * 1024 * 1024)  # Read 1 MB chunk
+                if not chunk:
+                    break  # No more data to read
+                # Upload the chunk as a part
+                part_etag = upload_s3_multipart_part(file_path, upload_id, part_number, chunk)
                 upload_parts.append({'PartNumber': part_number, 'ETag': part_etag})
+                part_number += 1
+
 
             # Completing S3 Multipart Upload
             complete_s3_multipart_upload(file_path, upload_id, upload_parts)
@@ -527,7 +534,7 @@ class AssignProjectPhaseView(APIView):
             except Exception as error:
                 logger.info("No Existing phase assignment found trying to create new one.")
                 phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
-                user_obj_ids = [str(i) for i in user_ids]
+                user_obj_ids = [User.objects.get(id=i).username for i in user_ids]
                 return Response({
                     'status': 'success',
                     'message': f'Assigned users [{", ".join(user_obj_ids)}] to project phase',
@@ -535,8 +542,10 @@ class AssignProjectPhaseView(APIView):
                     }, status=status.HTTP_200_OK
                 )
         elif phase_to_assign == 'Production' and project.phase.name == "Backlog":
+            if not user_ids:
+                return Response({"status": "error", "message": "Select atleast one user to assign the phase to production."}, status=status.HTTP_400_BAD_REQUEST)
             phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
-            user_obj_ids = [str(i) for i in user_ids]
+            user_obj_ids = [User.objects.get(id=i).username for i in user_ids]
             return Response({
                 'status': 'success',
                 'message': f'Assigned users [{", ".join(user_obj_ids)}] to project phase',
@@ -549,14 +558,15 @@ class AssignProjectPhaseView(APIView):
     def assign_phase_to_user(self, project, phase_to_assign, user_ids, phase_note, end_date):
         if phase_to_assign.upper() == 'QC':
             phase_to_assign = 'QC'
+
         assign_phase = PhaseAssignment.objects.create(
-            project=project, phase=Phase.objects.get(name=phase_to_assign), assigned_by=self.request.user, status='Open'
+            project=project, phase=Phase.objects.get(name=phase_to_assign), assigned_by=self.request.user, status='Open',
         )
+        assign_phase.assigned_to.set(user_ids)
         project.phase = Phase.objects.get(name=phase_to_assign)
         project.save()
 
         # Assign Phase to user
-        assign_phase.assigned_to.set(user_ids)
         assign_phase.save()
 
         # Add assignment details
