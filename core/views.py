@@ -713,3 +713,38 @@ class PhaseStatusUpdateView(APIView):
                 {'status': 'error', 'message': 'An error occurred while updating phase status'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class DownloadFileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, file_id):
+        # Check if user is authenticated
+        if file_id is not None:
+            # Initialize AWS S3 client
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            )
+
+            # Retrieve the file attachment
+            file_attachment = get_object_or_404(FileAttachment, id=file_id)
+            file_name = file_attachment.file_name
+
+            try:
+                # Retrieve the file from S3 in chunks and stream it as a response
+                s3_response = s3.get_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=file_name)
+
+                # Set response headers
+                response = Response(
+                    s3_response['Body'].iter_chunks(chunk_size=8192),  # Adjust chunk size as needed
+                    content_type=s3_response['ContentType']
+                )
+                response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+
+                return response
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
