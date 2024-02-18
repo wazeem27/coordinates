@@ -82,7 +82,7 @@ export function SignIn() {
   const SignInButton = () => {
     if (signInValidation(state.username, state.password, ShowError)) {
       setloader(true);
-      axios.post('https://bellatrix1.pythonanywhere.com/login/', { "username": state.username, "password": state.password })
+      axios.post('https://65.0.173.137/api/login/', { "username": state.username, "password": state.password })
         .then(function (response) {
           // handle success
           console.log(response);

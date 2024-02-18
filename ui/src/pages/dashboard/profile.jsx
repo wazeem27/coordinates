@@ -30,7 +30,7 @@ export function Profile() {
 
   const getProfile = () => {
     setloader(true);
-    axios.get(`https://bellatrix1.pythonanywhere.com/auth/profile/`,
+    axios.get(`https://65.0.173.137/api/auth/profile/`,
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`
@@ -62,7 +62,7 @@ export function Profile() {
 
   const updateNewPassword = (id) => {
     setloader(true);
-    axios.put(`https://bellatrix1.pythonanywhere.com/auth/update/password/`, { "old_password": oldPassword, "new_password1": new_password, "new_password2": confirmPassword },
+    axios.put(`https://65.0.173.137/api/auth/update/password/`, { "old_password": oldPassword, "new_password1": new_password, "new_password2": confirmPassword },
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`

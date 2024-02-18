@@ -75,7 +75,7 @@ export function UsersDetail(props) {
   
     const updateUser = (id) => {
         setloader(true);
-        axios.put(`https://bellatrix1.pythonanywhere.com/auth/users/${id}/update/`, { "username": username, "email": email, "first_name": first_name , "last_name":last_name},
+        axios.put(`https://65.0.173.137/api/auth/users/${id}/update/`, { "username": username, "email": email, "first_name": first_name , "last_name":last_name},
           {
             headers: {
               "Authorization": `Token ${localStorage.getItem("token")}`

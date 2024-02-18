@@ -22,7 +22,7 @@ export function Home() {
   }, []);
 
   const getInfo = () => {
-    axios.get(`https://bellatrix1.pythonanywhere.com/auth/dashboard/`,
+    axios.get(`https://65.0.173.137/api/auth/dashboard/`,
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`

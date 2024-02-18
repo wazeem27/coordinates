@@ -119,7 +119,7 @@ export function Projects() {
   }
   const projectLists = () => {
     setloader(true);
-    axios.get('https://bellatrix1.pythonanywhere.com/projects/',
+    axios.get('https://65.0.173.137/api/projects/',
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`
@@ -145,7 +145,7 @@ export function Projects() {
   const createProject = () => {
 
     setloader(true);
-    axios.post('https://bellatrix1.pythonanywhere.com/projects/create/',
+    axios.post('https://65.0.173.137/api/projects/create/',
       {
         title: state.title,
         description: state.description,

@@ -54,9 +54,12 @@ class ProjectCreateAPIView(APIView):
                 }},
                 status=status.HTTP_201_CREATED
             )
-        return Response(
-            {'status': 'error', "message": "Project 'title' cannot be empty."},
-            status=status.HTTP_400_BAD_REQUEST)
+        else:
+            if request.data.get("title").strip() != "":
+                return Response({"status": "error", "message": "Invalid Project Target End date. Target End Date should be future."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'status': 'error', "message": "Project 'title' cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProjectAPIView(APIView):

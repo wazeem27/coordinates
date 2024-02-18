@@ -59,7 +59,7 @@ const DetailComponent = (props) => {
 
     const listUsers = () => {
         setloader(true);
-        axios.get('https://bellatrix1.pythonanywhere.com/auth/users/',
+        axios.get('https://65.0.173.137/api/auth/users/',
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`
@@ -100,7 +100,7 @@ const DetailComponent = (props) => {
 
 
         setloader(true);
-        axios.post(`https://bellatrix1.pythonanywhere.com/projects/${id}/phase/`, payload,
+        axios.post(`https://65.0.173.137/api/projects/${id}/phase/`, payload,
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`
@@ -136,7 +136,7 @@ const DetailComponent = (props) => {
 
     const updateStatus = (status) => {
         setloader(true);
-        axios.post(`https://bellatrix1.pythonanywhere.com/projects/${detailData.data.id}/${status}/`, {},
+        axios.post(`https://65.0.173.137/api/projects/${detailData.data.id}/${status}/`, {},
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`
@@ -381,7 +381,7 @@ const AttachmentsComponent = (props) => {
 
     const Upload = () => {
         setloader(true);
-        axios.post(`https://bellatrix1.pythonanywhere.com/projects/${localStorage.getItem('id')}/attachments/`, { file: state.file, "tag": state.tag },
+        axios.post(`https://65.0.173.137/api/projects/${localStorage.getItem('id')}/attachments/`, { file: state.file, "tag": state.tag },
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`,
@@ -413,7 +413,7 @@ const AttachmentsComponent = (props) => {
 
     const deletefile = (fileid) => {
         setloader(true);
-        axios.delete(`https://bellatrix1.pythonanywhere.com/projects/${localStorage.getItem('id')}/attachments/${fileid}/`,
+        axios.delete(`https://65.0.173.137/api/projects/${localStorage.getItem('id')}/attachments/${fileid}/`,
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`,

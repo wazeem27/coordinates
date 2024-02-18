@@ -193,7 +193,7 @@ export function Users() {
 
   const deactivateUser = (id) => {
     setloader(true);
-    axios.delete(`https://bellatrix1.pythonanywhere.com/auth/users/${id}/deactivate/`,
+    axios.delete(`https://65.0.173.137/api/auth/users/${id}/deactivate/`,
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`
@@ -224,7 +224,7 @@ export function Users() {
 
   const activateUser = (id) => {
     setloader(true);
-    axios.put(`https://bellatrix1.pythonanywhere.com/auth/users/${id}/activate/`, "",
+    axios.put(`https://65.0.173.137/api/auth/users/${id}/activate/`, "",
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`
@@ -259,7 +259,7 @@ export function Users() {
 
   const createUser = (id) => {
     setloader(true);
-    axios.post(`https://bellatrix1.pythonanywhere.com/auth/create-user/`, {
+    axios.post(`https://65.0.173.137/api/auth/create-user/`, {
       username: state.username,
       first_name: state.first_name,
       last_name: state.last_name,
@@ -298,7 +298,7 @@ export function Users() {
 
   const listUsers = () => {
     setloader(true);
-    axios.get('https://bellatrix1.pythonanywhere.com/auth/users/',
+    axios.get('https://65.0.173.137/api/auth/users/',
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`
@@ -329,7 +329,7 @@ export function Users() {
 
   const getUserDetail = (id) => {
     setloader(true);
-    axios.get(`https://bellatrix1.pythonanywhere.com/auth/users/${id}/`,
+    axios.get(`https://65.0.173.137/api/auth/users/${id}/`,
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`

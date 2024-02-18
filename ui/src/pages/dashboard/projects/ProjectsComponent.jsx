@@ -26,7 +26,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 
-const TABLE_HEAD = ["Project Title", "Project Description", "Author", "Date", "", ""];
+const TABLE_HEAD = ["Project Title", "Project Description", "Author", "Target End Date", "", ""];
 
 const initialState = [
     {
@@ -155,7 +155,7 @@ export function ProjectsComponent(props) {
 
     const deleteProject = (id) => {
         setloader(true);
-        axios.delete(`https://bellatrix1.pythonanywhere.com/projects/${id}/`,
+        axios.delete(`https://65.0.173.137/api/projects/${id}/`,
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`,
@@ -196,7 +196,7 @@ export function ProjectsComponent(props) {
 
     const getProjectDetail = (id) => {
         setloader(true);
-        axios.get(`https://bellatrix1.pythonanywhere.com/projects/${id}/`,
+        axios.get(`https://65.0.173.137/api/projects/${id}/`,
             {
                 headers: {
                     "Authorization": `Token ${localStorage.getItem("token")}`

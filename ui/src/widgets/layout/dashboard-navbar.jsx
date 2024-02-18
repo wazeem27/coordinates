@@ -42,7 +42,7 @@ export function DashboardNavbar() {
 
   const SignOut = () => {
     setloader(true);
-    axios.post('https://bellatrix1.pythonanywhere.com/logout/', "",
+    axios.post('https://65.0.173.137/api/logout/', "",
       {
         headers: {
           "Authorization": `Token ${localStorage.getItem("token")}`
