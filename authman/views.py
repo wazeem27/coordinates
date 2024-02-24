@@ -419,36 +419,77 @@ class UserDashboardView(APIView):
             ).count()
         )
         return projects_last_week
+    
+    def get_project_data(self, phase_name):
+        projects = Project.objects.filter(phase__name=phase_name)
+        data = []
+        for project in projects:
+            proj_detail = {
+                'title': project.title, 'description': project.description,
+                'create_time': project.create_time, 'target_end_time': project.target_end_time,
+                'author': project.author.username, 'current_phase': project.phase.name
+            }
+            data.append(proj_detail)
+        return data
 
     def get(self, request):
         phases = ['Backlog', 'Production', 'QC', 'Delivery', 'Completed']
         if request.user.is_superuser:
             data = {
-                'backlog': Phase.objects.get(name='Backlog').project_set.all().count(),
-                'production': Phase.objects.get(name='Production').project_set.all().count(),
-                'qc': Phase.objects.get(name='QC').project_set.all().count(),
-                'delivery': Phase.objects.get(name='Delivery').project_set.all().count(),
-                'completed': Phase.objects.get(name='Completed').project_set.all().count()
+                'backlog': {
+                    'count': Phase.objects.get(name='Backlog').project_set.all().count(),
+                    'data': self.get_project_data('Backlog')
+                },
+                'production': {
+                    'count': Phase.objects.get(name='Production').project_set.all().count(),
+                    'data': self.get_project_data('Production')
+                },
+                'qc': {
+                    'count': Phase.objects.get(name='QC').project_set.all().count(),
+                    'data': self.get_project_data('QC')
+                },
+                'delivery': {
+                    'count': Phase.objects.get(name='Delivery').project_set.all().count(),
+                    'data': self.get_project_data('Delivery')
+                },
+                'completed': {
+                    'count': Phase.objects.get(name='Completed').project_set.all().count(),
+                    'data': self.get_project_data('Delivery')
+                }
             }
         else:
             data = {
-                'backlog': Phase.objects.get(name='Backlog').project_set.all().count(),
-                'production': Phase.objects.get(name='Production').project_set.all().count(),
-                'qc': Phase.objects.get(name='QC').project_set.all().count(),
-                'delivery': Phase.objects.get(name='Delivery').project_set.all().count(),
-                'completed': Phase.objects.get(name='Completed').project_set.all().count()
-
+                'backlog': {
+                    'count': Phase.objects.get(name='Backlog').project_set.all().count(),
+                    'data': self.get_project_data('Backlog')
+                },
+                'production': {
+                    'count': Phase.objects.get(name='Production').project_set.all().count(),
+                    'data': self.get_project_data('Production')
+                },
+                'qc': {
+                    'count': Phase.objects.get(name='QC').project_set.all().count(),
+                    'data': self.get_project_data('QC')
+                },
+                'delivery': {
+                    'count': Phase.objects.get(name='Delivery').project_set.all().count(),
+                    'data': self.get_project_data('Delivery')
+                },
+                'completed': {
+                    'count': Phase.objects.get(name='Completed').project_set.all().count(),
+                    'data': self.get_project_data('Delivery')
+                }
             }
-        for phase_name in phases:
-            current_count = Phase.objects.get(name=phase_name).project_set.all().count()
-            last_week_count = self.get_last_week_data(phase_name)
+        # for phase_name in phases:
+        #     current_count = Phase.objects.get(name=phase_name).project_set.all().count()
+        #     last_week_count = self.get_last_week_data(phase_name)
 
-            # Calculate percentage change
-            if last_week_count == 0:
-                percentage_change = 100 if current_count > 0 else 0
-            else:
-                percentage_change = ((current_count - last_week_count) / last_week_count) * 100
-            data["rate_of_change_"+phase_name.lower()] = round(percentage_change, 2)
+        #     # Calculate percentage change
+        #     if last_week_count == 0:
+        #         percentage_change = 100 if current_count > 0 else 0
+        #     else:
+        #         percentage_change = ((current_count - last_week_count) / last_week_count) * 100
+        #     data["rate_of_change_"+phase_name.lower()] = round(percentage_change, 2)
         return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
 
 
