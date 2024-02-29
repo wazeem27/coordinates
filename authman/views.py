@@ -156,15 +156,15 @@ class UserListView(APIView):
             user_data['email'] = user.email
             user_data['first_name'] = user.first_name
             user_data['last_name'] = user.first_name
+            groups = user.groups.values_list('name', flat=True)
             if request.user.is_superuser:
-                groups = user.groups.values_list('name', flat=True)
                 if user_data['username'] == request.user.username:
                     user_data['role'] = 'superuser'
-                elif groups:
-                    user_data['role'] = groups[0].split(' ')[0].lower()
-                else:
-                    user_data['role'] = ''
-                user_data['flag'] = 'active' if user.is_active else 'deactivated'
+            elif groups:
+                user_data['role'] = groups[0].split(' ')[0].lower()
+            else:
+                user_data['role'] = ''
+            user_data['flag'] = 'active' if user.is_active else 'deactivated'
             content.append(user_data)
         return Response({'status': 'success', 'data': content})
 
@@ -419,12 +419,13 @@ class UserDashboardView(APIView):
             ).count()
         )
         return projects_last_week
-    
+
     def get_project_data(self, phase_name):
         projects = Project.objects.filter(phase__name=phase_name)
         data = []
         for project in projects:
             proj_detail = {
+                'id': project.id,
                 'title': project.title, 'description': project.description,
                 'create_time': project.create_time, 'target_end_time': project.target_end_time,
                 'author': project.author.username, 'current_phase': project.phase.name
@@ -454,7 +455,7 @@ class UserDashboardView(APIView):
                 },
                 'completed': {
                     'count': Phase.objects.get(name='Completed').project_set.all().count(),
-                    'data': self.get_project_data('Delivery')
+                    'data': self.get_project_data('Completed')
                 }
             }
         else:
@@ -477,7 +478,7 @@ class UserDashboardView(APIView):
                 },
                 'completed': {
                     'count': Phase.objects.get(name='Completed').project_set.all().count(),
-                    'data': self.get_project_data('Delivery')
+                    'data': self.get_project_data('Completed')
                 }
             }
         # for phase_name in phases:
@@ -536,7 +537,7 @@ class UserDetailView(APIView):
             'email': user_obj.email,
             'role': role,
             'recentprojects': [
-                {'id': proj.id, 'title': proj.title, 'current_phase': proj.phase.name} for proj in usr_involved_proj
+                {'id': proj.id, 'title': proj.title, 'current_phase': proj.phase.name, 'description': proj.description} for proj in usr_involved_proj
             ]
         }
         return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
