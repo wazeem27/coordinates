@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework import generics
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, date
 import boto3
 from django.contrib.auth.models import User
 from botocore.exceptions import ClientError
@@ -55,11 +55,25 @@ class ProjectCreateAPIView(APIView):
                 status=status.HTTP_201_CREATED
             )
         else:
-            if request.data.get("title").strip() != "":
-                return Response({"status": "error", "message": "Invalid Project Target End date. Target End Date should be future."}, status=status.HTTP_400_BAD_REQUEST)
-            return Response(
-                {'status': 'error', "message": "Project 'title' cannot be empty."},
-                status=status.HTTP_400_BAD_REQUEST)
+            target_end_time_str = request.data.get("target_end_time")
+            target_end_date = datetime.strptime(target_end_time_str, '%Y-%m-%d').date()
+
+            if not request.data.get("title") or not request.data.get('target_end_time'):
+                return Response({
+                    'status': 'error',
+                    'message': 'Please provde project title and target end date'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            elif date.today() >= target_end_date:
+                return Response(
+                    {'status': 'error', 'message': 'Project Target End date should be future date'},
+                    status=status.HTTP_400_BAD_REQUEST 
+                ) 
+            else:
+                return Response(
+                    {'status': 'error', "message": "Please provide valid project info."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
 
 class ProjectAPIView(APIView):
@@ -166,7 +180,7 @@ class ProjectAPIView(APIView):
 
         return Response({
             'status': 'success',
-            'message':'Project deleted successfully'},
+            'message':f'Project "{project.title}" deleted successfully'},
             status=status.HTTP_200_OK
         )
 
@@ -494,10 +508,15 @@ class AssignProjectPhaseView(APIView):
                 phase_to_assign = 'QC'
             try:
                 # try finding the existing phase assignment
-                PhaseAssignment.objects.get(project=project, phase=Phase.objects.get(name=phase_to_assign))
+                #PhaseAssignment.objects.get(project=project, phase=Phase.objects.get(name=phase_to_assign))
                 # Update the Phase Assignment details instead of creating a new object
                 # For production we have to move the phase back to Backlog for a scenario
-                phase_assignment = PhaseAssignment.objects.get(project=project)
+                phase_Assignment_list = PhaseAssignment.objects.filter(project=project, phase=project.phase)
+                if not phase_Assignment_list:
+                    phase_assignment, project_detail = self.assign_phase_to_user(project, phase_to_assign, user_ids, phase_note, end_date)
+                else:
+                    phase_assignment = phase_Assignment_list[0]
+
                 existing_assigned_users = [usr.id for usr in phase_assignment.assigned_to.all()]
                 if set(user_ids) != set(existing_assigned_users):
                     phase_assignment.assigned_to.set(user_ids)
@@ -510,18 +529,23 @@ class AssignProjectPhaseView(APIView):
                         change_note=f"Assigned project Phase {project.phase.name} to user(s) {usernames}",
                         status="update"
                     )
-                assignment_detail = AssignmentDetail.objects.get(assignment=phase_assignment)
-                phase_note_and_date_event = False
-                if assignment_detail.note != phase_note:
-                    phase_note_and_date_event = True
-                    assignment_detail.note = phase_note
-                    assignment_detail.save()
-                if (phase_end_date and
-                        assignment_detail.end_date != datetime.strptime(phase_end_date, '%Y-%m-%d').date()):
+                try:
+                    assignment_detail = AssignmentDetail.objects.get(assignment=phase_assignment)
+                
+                    phase_note_and_date_event = False
+                    if assignment_detail.note != phase_note:
+                        phase_note_and_date_event = True
+                        assignment_detail.note = phase_note
+                        assignment_detail.save()
+                    if (phase_end_date and
+                            assignment_detail.end_date != datetime.strptime(phase_end_date, '%Y-%m-%d').date()):
 
-                    phase_note_and_date_event = True
-                    assignment_detail.end_date = datetime.strptime(phase_end_date, '%Y-%m-%d').date()
-                    assignment_detail.save()
+                        phase_note_and_date_event = True
+                        assignment_detail.end_date = datetime.strptime(phase_end_date, '%Y-%m-%d').date()
+                        assignment_detail.save()
+                except Exception as error:
+                    logger.warning("No assignment details found for this ")
+
 
                 # Update event in project timeline
                 if phase_note_and_date_event:
@@ -654,7 +678,7 @@ class PhaseStatusUpdateView(APIView):
                 {
                     "status": "error",
                     "message": "Assign the phase to someone first in-order to start the work"
-                }
+                }, status=status.HTTP_400_BAD_REQUEST
             )
         try:
             if assgnment.status.lower() != phase_status:
@@ -667,7 +691,8 @@ class PhaseStatusUpdateView(APIView):
             
                 if phase_status.strip().lower() != 'done' and assgnment.status == 'Done':
                     return Response(
-                        {"status": "error", "message": "Cannot change a completed phase status."}
+                        {"status": "error", "message": "Cannot change a completed phase status."},
+                        status=status.HTTP_400_BAD_REQUEST
                     )
                 elif phase_status.strip().lower() == "in-progress" and assgnment.status == 'Open':
                     assgnment.status = 'In-Progress'
@@ -727,7 +752,7 @@ class DownloadFileAPIView(APIView):
                 aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             )
-
+            #import ipdb;ipdb.set_trace()
             # Retrieve the file attachment
             file_attachment = get_object_or_404(FileAttachment, id=file_id)
             file_name = file_attachment.file_name
@@ -738,7 +763,7 @@ class DownloadFileAPIView(APIView):
 
                 # Set response headers
                 response = Response(
-                    s3_response['Body'].iter_chunks(chunk_size=8192),  # Adjust chunk size as needed
+                    s3_response['Body'], #.iter_chunks(chunk_size=8192),  # Adjust chunk size as needed
                     content_type=s3_response['ContentType']
                 )
                 response['Content-Disposition'] = f'attachment; filename="{file_name}"'
