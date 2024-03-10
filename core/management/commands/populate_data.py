@@ -25,7 +25,7 @@ class Command(BaseCommand):
             {"name": "Backlog", "description": "Tasks that are yet to be scheduled or prioritized."},
             {"name": "Production", "description": "Tasks under active development."},
             {"name": "QC", "description": "Tasks under quality control."},
-            {"name": "Validating", "description": "Tasks being reviewed or validated."},
+            {"name": "Delivery", "description": "Tasks being reviewed or validated."},
             {"name": "Completed", "description": "Tasks that are finished."},
         ]
 

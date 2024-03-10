@@ -12,7 +12,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.views import PasswordResetView
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
-
+from core.models import ProjectTimeline, PhaseAssignment, Project, Phase
+from datetime import datetime, timedelta
 import logging
 
 from .serializers import (
@@ -72,7 +73,25 @@ class CreateUserView(APIView):
 
     def post(self, request):
         serializer = UserCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if (not request.data.get('username') or not request.data.get('first_name') or 
+                not request.data.get('last_name') or not request.data.get('email')):
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'Please fill [username, first_name, last_name, email, password]'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not serializer.is_valid():
+            field_errors = ""
+            for field, error_detail in serializer.errors.items():
+                if field in ['username', 'email', 'first_name', 'last_name']:
+                    field_errors += error_detail[0] + " "
+                elif field in ['non_field_errors']:
+                    field_errors += error_detail[0] + " "
+            return Response({
+                'status': 'error', 'message': field_errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
@@ -102,7 +121,11 @@ class CreateUserView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
+            if User.objects.filter(username=username):
+                return Response(
+                    {'status': 'error', 'message': f'User with username "{username}" already exist.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             user = User.objects.create_user(
                 username=username, email=email, password=password,
                 first_name=first_name, last_name=last_name
@@ -155,15 +178,17 @@ class UserListView(APIView):
             user_data['email'] = user.email
             user_data['first_name'] = user.first_name
             user_data['last_name'] = user.first_name
-            if request.user.is_superuser:
-                groups = user.groups.values_list('name', flat=True)
-                if user_data['username'] == request.user.username:
-                    user_data['role'] = 'superuser'
-                elif groups:
-                    user_data['role'] = groups[0].split(' ')[0].lower()
-                else:
-                    user_data['role'] = ''
-                user_data['flag'] = 'active' if user.is_active else 'deactivated'
+            groups = user.groups.values_list('name', flat=True)
+            #if request.user.is_superuser:
+            if groups:
+                user_data['role'] = groups[0].split(' ')[0].lower()
+            elif user.is_superuser:
+                user_data['role'] = 'superuser'
+            else:
+                user_data['role'] = ''
+            if user_data['username'] == request.user.username and request.user.is_superuser:
+                user_data['role'] = 'superuser'
+            user_data['flag'] = 'active' if user.is_active else 'deactivated'
             content.append(user_data)
         return Response({'status': 'success', 'data': content})
 
@@ -232,7 +257,7 @@ class UserUpdateView(UpdateAPIView):
     def update(self, request, *args, **kwargs):
         try:
             user_instance = self.get_object()
-            
+
             if request.user.is_superuser or request.user == user_instance:
                 message = ""
                 serializer_class = self.get_serializer_class()
@@ -328,7 +353,7 @@ class ChangePasswordView(UpdateAPIView):
         else:
             # Handle form errors
             return Response(
-                {"status": "error", "message": form.errors},
+                {"status": "error", "message": form.errors.get('new_password2', ['Use Strong password.'])[0]},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -381,3 +406,171 @@ class UserReactivateView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class UserProfileView(APIView):
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):
+        groups = request.user.groups.values_list('name', flat=True)
+        
+        role = ''
+        if request.user.is_superuser:
+            role = 'superuser'
+        elif groups:
+            role = groups[0].split(' ')[0].lower()
+        data = {
+            'id': request.user.id,
+            'username': request.user.username,
+            'first_name': request.user.first_name,
+            'last_name': request.user.last_name,
+            'email': request.user.email,
+            'role': role
+            }
+        return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
+
+class UserDashboardView(APIView):
+    authentication_classes = [TokenAuthentication]
+
+    def get_last_week_data(self, phase_name):
+        last_week_start = datetime.now() - timedelta(days=7)
+        last_week_end = datetime.now()
+
+        projects_last_week = (
+            Project.objects.filter(
+                phase__name=phase_name,
+                create_time__gte=last_week_start,
+                create_time__lt=last_week_end
+            ).count()
+        )
+        return projects_last_week
+
+    def get_project_data(self, phase_name):
+        projects = Project.objects.filter(phase__name=phase_name)
+        data = []
+        for project in projects:
+            proj_detail = {
+                'id': project.id,
+                'title': project.title,
+                'description': project.description,
+                'create_time': project.create_time,
+                'target_end_time': str(project.target_end_time)+ " (Target End Date)" if phase_name != "Completed" else project.completion_date.date(),
+                'author': project.author.username,
+                'current_phase': project.phase.name
+            }
+            data.append(proj_detail)
+        return data
+
+    def get(self, request):
+        phases = ['Backlog', 'Production', 'QC', 'Delivery', 'Completed']
+        if request.user.is_superuser:
+            data = {
+                'backlog': {
+                    'count': Phase.objects.get(name='Backlog').project_set.all().count(),
+                    'data': self.get_project_data('Backlog')
+                },
+                'production': {
+                    'count': Phase.objects.get(name='Production').project_set.all().count(),
+                    'data': self.get_project_data('Production')
+                },
+                'qc': {
+                    'count': Phase.objects.get(name='QC').project_set.all().count(),
+                    'data': self.get_project_data('QC')
+                },
+                'delivery': {
+                    'count': Phase.objects.get(name='Delivery').project_set.all().count(),
+                    'data': self.get_project_data('Delivery')
+                },
+                'completed': {
+                    'count': Phase.objects.get(name='Completed').project_set.all().count(),
+                    'data': self.get_project_data('Completed')
+                }
+            }
+        else:
+            data = {
+                'backlog': {
+                    'count': Phase.objects.get(name='Backlog').project_set.all().count(),
+                    'data': self.get_project_data('Backlog')
+                },
+                'production': {
+                    'count': Phase.objects.get(name='Production').project_set.all().count(),
+                    'data': self.get_project_data('Production')
+                },
+                'qc': {
+                    'count': Phase.objects.get(name='QC').project_set.all().count(),
+                    'data': self.get_project_data('QC')
+                },
+                'delivery': {
+                    'count': Phase.objects.get(name='Delivery').project_set.all().count(),
+                    'data': self.get_project_data('Delivery')
+                },
+                'completed': {
+                    'count': Phase.objects.get(name='Completed').project_set.all().count(),
+                    'data': self.get_project_data('Completed')
+                }
+            }
+        # for phase_name in phases:
+        #     current_count = Phase.objects.get(name=phase_name).project_set.all().count()
+        #     last_week_count = self.get_last_week_data(phase_name)
+
+        #     # Calculate percentage change
+        #     if last_week_count == 0:
+        #         percentage_change = 100 if current_count > 0 else 0
+        #     else:
+        #         percentage_change = ((current_count - last_week_count) / last_week_count) * 100
+        #     data["rate_of_change_"+phase_name.lower()] = round(percentage_change, 2)
+        return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
+
+
+class UserDetailView(APIView):
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request, pk):
+        try:
+            user_obj = User.objects.get(id=pk)
+        except Exception as error:
+            logger.error(f"User with ID {pk} not found")
+            return Response(
+                {
+                    'status': 'error',
+                    'message': f'User with ID {pk} not found.'
+                }, status=status.HTTP_404_NOT_FOUND
+            )
+        if user_obj.groups.filter(name='Admin Group').exists():
+            role = 'admin'
+        elif user_obj.groups.filter(name='Employee Group').exists():
+            role = 'employee'
+        elif user_obj.is_superuser:
+            role = 'superuser'
+        else:
+            role = 'unknown'
+
+        usr_involved_proj = []
+        if role == 'superuser':
+            projects_timelines = ProjectTimeline.objects.all().order_by('-date_time')
+            for timeline in projects_timelines:
+                if len(usr_involved_proj) == 5:
+                    break
+                elif timeline.project not in usr_involved_proj:
+                    usr_involved_proj.append(timeline.project)
+
+
+        else:
+            projects_timelines = ProjectTimeline.objects.all().order_by('-date_time')
+            for timeline in projects_timelines:
+                if len(usr_involved_proj) == 5:
+                    break
+                elif timeline.project not in usr_involved_proj:
+                    usr_involved_proj.append(timeline.project)
+        data = {
+            'id': user_obj.id,
+            'username': user_obj.username,
+            'first_name': user_obj.first_name,
+            'last_name': user_obj.last_name,
+            'email': user_obj.email,
+            'role': role,
+            'recentprojects': [
+                {'id': proj.id, 'title': proj.title, 'current_phase': proj.phase.name, 'description': proj.description} for proj in usr_involved_proj
+            ]
+        }
+        return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)

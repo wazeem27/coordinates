@@ -21,8 +21,8 @@ from authman.views import LoginView, LogoutView
 
 urlpatterns = [
     # path('admin/', admin.site.urls),
-    path('login/', LoginView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(), name='logout'),
-    path('auth/', include('authman.urls')),
+    path('api/login/', LoginView.as_view(), name='login'),
+    path('api/logout/', LogoutView.as_view(), name='logout'),
+    path('api/auth/', include('authman.urls')),
     path('', include('core.urls')),
 ]

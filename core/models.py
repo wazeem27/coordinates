@@ -10,7 +10,7 @@ class Phase(models.Model):
         ("Backlog", "Backlog"),
         ("Production", "Production"),
         ("QC", "QC"),
-        ("Validating", "Validating"),
+        ("Delivery", "Delivery"),
         ("Completed", "Completed")
     )
     name = models.CharField(max_length=30, choices=PHASE_CHOICES, unique=True)
@@ -61,31 +61,27 @@ class PhaseAssignment(models.Model):
         ('Done', 'Done')
     )
     status = models.CharField(max_length=25, choices=STATUS_CHOICES)
-    assigned_to = MultiSelectField(
-        choices=[],
-        max_choices=3,
-        max_length=3
-    )
+    assigned_to = models.ManyToManyField(User, related_name='assigned_to_phase_assignments')
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._meta.get_field('assigned_to').choices = self.get_user_choices()
-
-    @staticmethod
-    def get_user_choices():
-        from django.contrib.auth.models import User
-        return [(user.id, user.username) for user in User.objects.all()]
 
 
 class AssignmentDetail(models.Model):
     assignment = models.ForeignKey(PhaseAssignment, on_delete=models.CASCADE)
     note = models.TextField()
-    end_date = models.DateTimeField()
+    end_date = models.DateField(null=True, blank=True)
+
+
+class PhaseStatus(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
 
 
 class ProjectTimeline(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     date_time = models.DateTimeField(auto_now_add=True)
     change_note = models.TextField()
     CHANGE_STATE = (
